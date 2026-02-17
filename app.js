@@ -1,3 +1,10 @@
+// Takvimde bugüne git
+function todayMonth() {
+    const today = new Date();
+    APP_STATE.calendarMonth = today.getMonth();
+    APP_STATE.calendarYear = today.getFullYear();
+    renderCalendar();
+}
 // ==================== APP STATE ====================
 const APP_STATE = {
     habits: [],
@@ -537,12 +544,18 @@ const closeDayModal = () => {
 };
 
 const setDayMood = (mood) => {
-    if (!APP_STATE.selectedDate) return;
+    console.log('setDayMood called with mood:', mood, 'selectedDate:', APP_STATE.selectedDate);
+    if (!APP_STATE.selectedDate) {
+        console.error('selectedDate is null!');
+        return;
+    }
     
     if (!APP_STATE.dailyLogs[APP_STATE.selectedDate]) {
         APP_STATE.dailyLogs[APP_STATE.selectedDate] = { habits: {}, mood: null, note: '' };
     }
     APP_STATE.dailyLogs[APP_STATE.selectedDate].mood = mood;
+    
+    console.log('Updated dailyLogs:', APP_STATE.dailyLogs);
     
     document.querySelectorAll('.modal-mood .mood-btn').forEach(btn => {
         btn.classList.toggle('selected', parseInt(btn.dataset.mood) === mood);
@@ -554,7 +567,11 @@ const setDayMood = (mood) => {
 };
 
 const toggleDayHabit = (habitId) => {
-    if (!APP_STATE.selectedDate) return;
+    console.log('toggleDayHabit called with habitId:', habitId, 'selectedDate:', APP_STATE.selectedDate);
+    if (!APP_STATE.selectedDate) {
+        console.error('selectedDate is null!');
+        return;
+    }
     
     if (!APP_STATE.dailyLogs[APP_STATE.selectedDate]) {
         APP_STATE.dailyLogs[APP_STATE.selectedDate] = { habits: {}, mood: null, note: '' };
@@ -562,6 +579,8 @@ const toggleDayHabit = (habitId) => {
     
     const current = APP_STATE.dailyLogs[APP_STATE.selectedDate].habits[habitId] || false;
     APP_STATE.dailyLogs[APP_STATE.selectedDate].habits[habitId] = !current;
+    
+    console.log('Updated dailyLogs:', APP_STATE.dailyLogs);
     
     // Update toggle button
     const btn = event.target;
@@ -594,135 +613,118 @@ const saveDayNote = () => {
 
 // ==================== ANALYTICS ====================
 const renderAnalytics = () => {
-    renderMoodAnalytics();
+    console.log('[Analytics] Rendering with data:', {
+        habits: APP_STATE.habits.length,
+        logs: Object.keys(APP_STATE.dailyLogs).length,
+        logDates: Object.keys(APP_STATE.dailyLogs)
+    });
+    renderWeekdayMoodAnalysis();
+    renderWeekdayHabitsAnalysis();
     renderHabitAnalytics();
-    renderWeeklyPattern();
+    renderOverallStats();
+    renderHeatmap();
 };
 
-const setAnalyticsPeriod = (period) => {
-    APP_STATE.analyticsPeriod = period;
-    document.querySelectorAll('.period-tab').forEach(tab => {
-        tab.classList.toggle('active', tab.dataset.period === period);
-    });
-    renderAnalytics();
-};
-
-const getDateRange = () => {
-    const today = new Date();
-    const dates = [];
-    const days = APP_STATE.analyticsPeriod === 'week' ? 7 : 30;
+// Haftanın günlerine göre mood analizi
+const renderWeekdayMoodAnalysis = () => {
+    const container = document.getElementById('weekday-mood-grid');
+    if (!container) return;
     
-    for (let i = days - 1; i >= 0; i--) {
-        const d = new Date(today);
-        d.setDate(d.getDate() - i);
-        dates.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`);
-    }
-    
-    return dates;
-};
-
-const renderMoodAnalytics = () => {
-    const dates = getDateRange();
-    const container = document.getElementById('mood-chart');
     const dayNames = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
+    const dayMoods = [[], [], [], [], [], [], []]; // Her gün için mood listesi
     
-    // Calculate stats from ALL dates in range first
-    let totalMood = 0;
-    let moodCount = 0;
-    let moodDistribution = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
-    
-    dates.forEach(date => {
-        const log = APP_STATE.dailyLogs[date];
-        const mood = log?.mood;
-        if (mood && mood > 0) {
-            totalMood += mood;
-            moodCount++;
-            moodDistribution[mood]++;
-        }
+    // Tüm logları tara
+    Object.entries(APP_STATE.dailyLogs).forEach(([date, log]) => {
+        if (!log.mood) return;
+        const dayIndex = new Date(date).getDay();
+        const adjustedIndex = dayIndex === 0 ? 6 : dayIndex - 1;
+        dayMoods[adjustedIndex].push(log.mood);
     });
     
-    // For display, show subset of dates for monthly view
-    const displayDates = APP_STATE.analyticsPeriod === 'week' ? dates : dates.filter((_, i) => i % 4 === 0 || i === dates.length - 1);
-    
-    let html = '';
-    displayDates.forEach(date => {
-        const log = APP_STATE.dailyLogs[date];
-        const mood = log?.mood || 0;
-        const height = mood > 0 ? (mood / 5) * 80 : 5;
-        const color = mood > 0 ? MOOD_COLORS[mood] : 'var(--border-color)';
-        const dayIndex = new Date(date).getDay();
-        const label = APP_STATE.analyticsPeriod === 'week' ? 
-            dayNames[dayIndex === 0 ? 6 : dayIndex - 1] : 
-            date.split('-')[2];
+    container.innerHTML = dayNames.map((name, i) => {
+        const moods = dayMoods[i];
+        const avg = moods.length > 0 ? moods.reduce((a, b) => a + b, 0) / moods.length : 0;
+        const avgRounded = Math.round(avg);
+        const emoji = avgRounded > 0 ? MOOD_EMOJIS[avgRounded] : '—';
         
-        html += `
-            <div class="chart-bar">
-                <span class="bar-value">${mood > 0 ? MOOD_EMOJIS[mood] : '-'}</span>
-                <div class="bar-fill" style="height: ${height}px; background: ${color};"></div>
-                <span class="bar-label">${label}</span>
+        return `
+            <div class="weekday-item">
+                <span class="weekday-label">${name}</span>
+                <span class="weekday-mood-value">${emoji}</span>
+                <span class="weekday-avg">${avg > 0 ? avg.toFixed(1) : '-'}</span>
             </div>
         `;
+    }).join('');
+};
+
+// Haftanın günlerine göre alışkanlık analizi
+const renderWeekdayHabitsAnalysis = () => {
+    const container = document.getElementById('weekday-habits-grid');
+    if (!container) return;
+    
+    const dayNames = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
+    const dayStats = [[], [], [], [], [], [], []]; // Her gün için completion oranları
+    
+    if (APP_STATE.habits.length === 0) {
+        container.innerHTML = '<div class="no-habits" style="padding: 20px; grid-column: 1/-1;">Alışkanlık ekleyin</div>';
+        return;
+    }
+    
+    // Tüm logları tara
+    Object.entries(APP_STATE.dailyLogs).forEach(([date, log]) => {
+        const dayIndex = new Date(date).getDay();
+        const adjustedIndex = dayIndex === 0 ? 6 : dayIndex - 1;
+        
+        const completed = APP_STATE.habits.filter(h => log.habits?.[h.id]).length;
+        const percent = (completed / APP_STATE.habits.length) * 100;
+        dayStats[adjustedIndex].push(percent);
     });
     
-    container.innerHTML = html;
-    
-    // Summary - using stats from ALL dates
-    const avgMood = moodCount > 0 ? (totalMood / moodCount).toFixed(1) : '-';
-    const mostCommon = Object.entries(moodDistribution).sort((a, b) => b[1] - a[1])[0];
-    
-    document.getElementById('avg-mood').textContent = avgMood;
-    document.getElementById('common-mood').textContent = mostCommon[1] > 0 ? MOOD_EMOJIS[mostCommon[0]] : '-';
-    document.getElementById('logged-days').textContent = moodCount;
-    document.getElementById('mood-trend').textContent = calculateMoodTrend(dates);
+    container.innerHTML = dayNames.map((name, i) => {
+        const stats = dayStats[i];
+        const avg = stats.length > 0 ? stats.reduce((a, b) => a + b, 0) / stats.length : 0;
+        const hue = (avg / 100) * 120; // 0=red, 120=green
+        
+        return `
+            <div class="weekday-item">
+                <span class="weekday-label">${name}</span>
+                <div class="weekday-habit-bar">
+                    <div class="weekday-habit-fill" style="height: ${avg}%; background: hsl(${hue}, 70%, 45%);"></div>
+                </div>
+                <span class="weekday-habit-percent">${Math.round(avg)}%</span>
+            </div>
+        `;
+    }).join('');
 };
 
-const calculateMoodTrend = (dates) => {
-    const halfPoint = Math.floor(dates.length / 2);
-    const firstHalf = dates.slice(0, halfPoint);
-    const secondHalf = dates.slice(halfPoint);
-    
-    const firstAvg = getAvgMood(firstHalf);
-    const secondAvg = getAvgMood(secondHalf);
-    
-    if (firstAvg === 0 || secondAvg === 0) return '-';
-    if (secondAvg > firstAvg) return '📈';
-    if (secondAvg < firstAvg) return '📉';
-    return '➡️';
-};
-
-const getAvgMood = (dates) => {
-    let total = 0, count = 0;
-    dates.forEach(date => {
-        const mood = APP_STATE.dailyLogs[date]?.mood;
-        if (mood) { total += mood; count++; }
-    });
-    return count > 0 ? total / count : 0;
-};
-
+// Alışkanlık başarı oranları (tüm zamanlar)
 const renderHabitAnalytics = () => {
-    const dates = getDateRange();
     const container = document.getElementById('habit-analytics');
+    if (!container) return;
     
     if (APP_STATE.habits.length === 0) {
         container.innerHTML = '<div class="no-habits" style="padding: 20px;">Alışkanlık ekleyin</div>';
         return;
     }
     
-    // Filter dates to only include days up to today
-    const today = getToday();
-    const validDates = dates.filter(d => d <= today);
-    
-    if (validDates.length === 0) {
-        container.innerHTML = '<div class="no-habits" style="padding: 20px;">Veri yok</div>';
+    const allDates = Object.keys(APP_STATE.dailyLogs);
+    if (allDates.length === 0) {
+        container.innerHTML = '<div class="no-habits" style="padding: 20px;">Henüz veri yok</div>';
         return;
     }
     
     container.innerHTML = APP_STATE.habits.map(habit => {
         let completed = 0;
-        validDates.forEach(date => {
+        let total = 0;
+        
+        allDates.forEach(date => {
+            // Sadece bu alışkanlık oluşturulduktan sonraki günleri say
+            if (habit.createdAt && date < habit.createdAt) return;
+            total++;
             if (APP_STATE.dailyLogs[date]?.habits?.[habit.id]) completed++;
         });
-        const percent = Math.round((completed / validDates.length) * 100);
+        
+        const percent = total > 0 ? Math.round((completed / total) * 100) : 0;
         
         return `
             <div class="habit-stat">
@@ -739,42 +741,141 @@ const renderHabitAnalytics = () => {
     }).join('');
 };
 
-const renderWeeklyPattern = () => {
-    const dates = getDateRange();
-    const container = document.getElementById('weekly-pattern');
-    const dayNames = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
-    const dayStats = [0, 0, 0, 0, 0, 0, 0];
-    const dayCounts = [0, 0, 0, 0, 0, 0, 0];
+// Genel istatistikler
+const renderOverallStats = () => {
+    const allDates = Object.keys(APP_STATE.dailyLogs);
     
-    // Only use dates from the selected period
-    const today = getToday();
-    dates.filter(d => d <= today).forEach(date => {
+    // Toplam kayıtlı gün
+    document.getElementById('total-logged-days').textContent = allDates.length;
+    
+    // Ortalama mood
+    let totalMood = 0, moodCount = 0;
+    allDates.forEach(date => {
+        const mood = APP_STATE.dailyLogs[date]?.mood;
+        if (mood) { totalMood += mood; moodCount++; }
+    });
+    const avgMood = moodCount > 0 ? (totalMood / moodCount).toFixed(1) : '-';
+    document.getElementById('overall-avg-mood').textContent = avgMood;
+    
+    // En uzun seri
+    const bestStreak = calculateBestStreak();
+    document.getElementById('best-streak').textContent = bestStreak;
+    
+    // Genel başarı oranı
+    let totalCompleted = 0, totalPossible = 0;
+    if (APP_STATE.habits.length > 0) {
+        allDates.forEach(date => {
+            const log = APP_STATE.dailyLogs[date];
+            APP_STATE.habits.forEach(habit => {
+                if (habit.createdAt && date < habit.createdAt) return;
+                totalPossible++;
+                if (log?.habits?.[habit.id]) totalCompleted++;
+            });
+        });
+    }
+    const overallPercent = totalPossible > 0 ? Math.round((totalCompleted / totalPossible) * 100) : 0;
+    document.getElementById('overall-completion').textContent = `${overallPercent}%`;
+};
+
+// En uzun seri hesapla
+const calculateBestStreak = () => {
+    if (APP_STATE.habits.length === 0) return 0;
+    
+    const dates = Object.keys(APP_STATE.dailyLogs).sort();
+    let bestStreak = 0;
+    let currentStreak = 0;
+    let lastDate = null;
+    
+    dates.forEach(date => {
         const log = APP_STATE.dailyLogs[date];
-        if (!log) return;
+        const allCompleted = APP_STATE.habits.every(h => log?.habits?.[h.id]);
         
-        const dayIndex = new Date(date).getDay();
-        const adjustedIndex = dayIndex === 0 ? 6 : dayIndex - 1;
-        
-        const completedHabits = APP_STATE.habits.filter(h => log.habits?.[h.id]).length;
-        if (APP_STATE.habits.length > 0) {
-            dayStats[adjustedIndex] += (completedHabits / APP_STATE.habits.length) * 100;
-            dayCounts[adjustedIndex]++;
+        if (allCompleted) {
+            if (lastDate) {
+                const dayDiff = (new Date(date) - new Date(lastDate)) / (1000 * 60 * 60 * 24);
+                if (dayDiff === 1) {
+                    currentStreak++;
+                } else {
+                    currentStreak = 1;
+                }
+            } else {
+                currentStreak = 1;
+            }
+            lastDate = date;
+            bestStreak = Math.max(bestStreak, currentStreak);
+        } else {
+            currentStreak = 0;
+            lastDate = null;
         }
     });
     
-    container.innerHTML = dayNames.map((name, i) => {
-        const avg = dayCounts[i] > 0 ? Math.round(dayStats[i] / dayCounts[i]) : 0;
-        const hue = (avg / 100) * 120;
-        
-        return `
-            <div class="day-pattern">
-                <div class="day-pattern-label">${name}</div>
-                <div class="day-pattern-value" style="background: hsl(${hue}, 70%, 45%);">
-                    ${avg}%
-                </div>
-            </div>
-        `;
-    }).join('');
+    return bestStreak;
+};
+
+// Isı haritası - Son 4 ay (GitHub tarzı)
+const renderHeatmap = () => {
+    const container = document.getElementById('heatmap-grid');
+    if (!container) return;
+    
+    const today = new Date();
+    const todayStr = getToday();
+    
+    // Bugünün haftanın hangi günü olduğunu bul (0=Paz, 1=Pzt, ...)
+    const todayDayOfWeek = today.getDay();
+    const adjustedToday = todayDayOfWeek === 0 ? 6 : todayDayOfWeek - 1; // Pzt=0, Paz=6
+    
+    // 17 hafta göster (~4 ay)
+    const totalWeeks = 17;
+    const cells = [];
+    
+    // Her sütun bir hafta, her satır haftanın bir günü
+    for (let week = totalWeeks - 1; week >= 0; week--) {
+        for (let day = 0; day < 7; day++) { // Pzt=0, Paz=6
+            // Bu hafta için bu güne kaç gün var
+            const daysAgo = (week * 7) + (6 - day) + (6 - adjustedToday);
+            
+            // Bugünden sonraki günleri atla (sağ üst köşe)
+            if (week === 0 && day > adjustedToday) {
+                cells.push(`<div class="heatmap-cell level-0" style="opacity: 0.2;"></div>`);
+                continue;
+            }
+            
+            const d = new Date(today);
+            d.setDate(d.getDate() - daysAgo);
+            const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+            
+            const log = APP_STATE.dailyLogs[dateStr];
+            
+            // Level hesapla: mood + habit completion
+            let level = 0;
+            if (log) {
+                let score = 0;
+                
+                // Mood katkısı (0-2 puan)
+                if (log.mood) {
+                    score += (log.mood / 5) * 2;
+                }
+                
+                // Habit katkısı (0-2 puan)
+                if (APP_STATE.habits.length > 0) {
+                    const completed = APP_STATE.habits.filter(h => log.habits?.[h.id]).length;
+                    score += (completed / APP_STATE.habits.length) * 2;
+                }
+                
+                // Level: 0-4
+                if (score > 3) level = 4;
+                else if (score > 2) level = 3;
+                else if (score > 1) level = 2;
+                else if (score > 0) level = 1;
+            }
+            
+            cells.push(`<div class="heatmap-cell level-${level}" 
+                            title="${formatDate(dateStr)}" 
+                            data-date="${dateStr}"></div>`);
+        }
+    }
+    
+    container.innerHTML = cells.join('');
 };
 
 // ==================== SETTINGS ====================
@@ -855,6 +956,44 @@ const deleteAllData = () => {
             showToast('Tüm veriler silindi', 'success');
         }
     }
+};
+
+// Test verisi oluştur
+const generateTestData = () => {
+    // Örnek alışkanlıklar
+    APP_STATE.habits = [
+        { id: 'h1', name: 'Egzersiz', icon: '🏃', color: '#22c55e', createdAt: '2026-01-01' },
+        { id: 'h2', name: 'Kitap Oku', icon: '📚', color: '#6366f1', createdAt: '2026-01-01' },
+        { id: 'h3', name: 'Su İç', icon: '💧', color: '#06b6d4', createdAt: '2026-01-01' },
+        { id: 'h4', name: 'Meditasyon', icon: '🧘', color: '#8b5cf6', createdAt: '2026-01-01' }
+    ];
+    
+    // Son 60 gün için rastgele veri
+    const today = new Date();
+    for (let i = 0; i < 60; i++) {
+        const d = new Date(today);
+        d.setDate(d.getDate() - i);
+        const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        
+        // %70 ihtimalle log oluştur
+        if (Math.random() > 0.3) {
+            APP_STATE.dailyLogs[dateStr] = {
+                habits: {
+                    h1: Math.random() > 0.3,
+                    h2: Math.random() > 0.4,
+                    h3: Math.random() > 0.2,
+                    h4: Math.random() > 0.5
+                },
+                mood: Math.floor(Math.random() * 5) + 1,
+                note: ''
+            };
+        }
+    }
+    
+    saveData();
+    renderHome();
+    showToast('Test verisi oluşturuldu! Analytics\'e gidin.', 'success');
+    console.log('[Test] Generated data:', APP_STATE.dailyLogs);
 };
 
 // ==================== INITIALIZATION ====================

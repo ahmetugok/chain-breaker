@@ -105,6 +105,7 @@
                             <button class="nav-btn" onclick="prevMonth()">‹</button>
                             <h3 class="calendar-title" id="calendar-title">Ocak 2024</h3>
                             <button class="nav-btn" onclick="nextMonth()">›</button>
+                            <button class="nav-btn today-btn" onclick="todayMonth()">Bugün</button>
                         </div>
                         <div class="calendar-weekdays">
                             <span>Pzt</span>
@@ -139,46 +140,85 @@
             <!-- ANALYTICS PAGE -->
             <div id="analytics-page" class="page">
                 <div class="page-content">
+                    <!-- Haftanın Günlerine Göre Mood -->
                     <section class="analytics-card">
-                        <h3 class="card-title">📊 Duygu Durumu Analizi</h3>
-                        <div class="period-tabs">
-                            <button class="period-tab active" data-period="week">Hafta</button>
-                            <button class="period-tab" data-period="month">Ay</button>
-                        </div>
-                        <div class="mood-chart" id="mood-chart">
-                            <!-- Mood chart bars will be rendered here -->
-                        </div>
-                        <div class="mood-summary">
-                            <div class="summary-item">
-                                <span class="summary-value" id="avg-mood">-</span>
-                                <span class="summary-label">Ortalama</span>
-                            </div>
-                            <div class="summary-item">
-                                <span class="summary-value" id="common-mood">-</span>
-                                <span class="summary-label">En Sık</span>
-                            </div>
-                            <div class="summary-item">
-                                <span class="summary-value" id="logged-days">0</span>
-                                <span class="summary-label">Kayıtlı Gün</span>
-                            </div>
-                            <div class="summary-item">
-                                <span class="summary-value" id="mood-trend">-</span>
-                                <span class="summary-label">Trend</span>
-                            </div>
+                        <h3 class="card-title">😊 Haftanın Günlerine Göre Ruh Hali</h3>
+                        <p class="card-subtitle">Hangi günler daha iyi hissediyorsun?</p>
+                        <div class="weekday-mood-grid" id="weekday-mood-grid">
+                            <!-- Weekday mood will be rendered here -->
                         </div>
                     </section>
 
+                    <!-- Haftanın Günlerine Göre Alışkanlıklar -->
                     <section class="analytics-card">
-                        <h3 class="card-title">🎯 Alışkanlık Başarısı</h3>
+                        <h3 class="card-title">🎯 Haftanın Günlerine Göre Alışkanlıklar</h3>
+                        <p class="card-subtitle">Hangi günler daha verimlisin?</p>
+                        <div class="weekday-habits-grid" id="weekday-habits-grid">
+                            <!-- Weekday habits will be rendered here -->
+                        </div>
+                    </section>
+
+                    <!-- Alışkanlık Detayları -->
+                    <section class="analytics-card">
+                        <h3 class="card-title">📈 Alışkanlık Başarı Oranları</h3>
+                        <p class="card-subtitle">Tüm zamanlar</p>
                         <div class="habit-analytics" id="habit-analytics">
                             <!-- Habit analytics will be rendered here -->
                         </div>
                     </section>
 
+                    <!-- Genel İstatistikler -->
                     <section class="analytics-card">
-                        <h3 class="card-title">📅 Haftalık Düzen</h3>
-                        <div class="weekly-pattern" id="weekly-pattern">
-                            <!-- Weekly pattern will be rendered here -->
+                        <h3 class="card-title">📊 Genel İstatistikler</h3>
+                        <div class="overall-stats">
+                            <div class="overall-stat">
+                                <span class="overall-value" id="total-logged-days">0</span>
+                                <span class="overall-label">Toplam Kayıt</span>
+                            </div>
+                            <div class="overall-stat">
+                                <span class="overall-value" id="overall-avg-mood">-</span>
+                                <span class="overall-label">Ort. Ruh Hali</span>
+                            </div>
+                            <div class="overall-stat">
+                                <span class="overall-value" id="best-streak">0</span>
+                                <span class="overall-label">En Uzun Seri</span>
+                            </div>
+                            <div class="overall-stat">
+                                <span class="overall-value" id="overall-completion">0%</span>
+                                <span class="overall-label">Başarı Oranı</span>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- Son 4 Ayın Özeti - Isı Haritası -->
+                    <section class="analytics-card">
+                        <h3 class="card-title">🗓️ Son 4 Ayın Özeti</h3>
+                        <p class="card-subtitle">Her kare bir günü temsil eder</p>
+                        <div class="heatmap-wrapper">
+                            <div class="heatmap-days">
+                                <span>Pzt</span>
+                                <span>Sal</span>
+                                <span>Çar</span>
+                                <span>Per</span>
+                                <span>Cum</span>
+                                <span>Cmt</span>
+                                <span>Paz</span>
+                            </div>
+                            <div class="heatmap-grid" id="heatmap-grid">
+                                <!-- Heatmap will be rendered here -->
+                            </div>
+                        </div>
+                        <div class="heatmap-legend">
+                            <span>Az</span>
+                            <div class="heatmap-legend-colors">
+                                <span style="background: var(--bg-input);"></span>
+                                <span style="background: #374151;"></span>
+                                <span style="background: #065f46;"></span>
+                                <span style="background: #059669;"></span>
+                                <span style="background: #10b981;"></span>
+                            </div>
+                            <span>Çok</span>
+                        </div>
                         </div>
                     </section>
                 </div>
@@ -215,6 +255,14 @@
                                 <span class="setting-desc">Yedekten geri yükle</span>
                             </div>
                             <button class="setting-btn import" onclick="importData()">İçe Aktar</button>
+                        </div>
+
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <span class="setting-label">🧪 Test Verisi Oluştur</span>
+                                <span class="setting-label">Analytics'i test etmek için örnek veri</span>
+                            </div>
+                            <button class="setting-btn" onclick="generateTestData()">Oluştur</button>
                         </div>
 
                         <div class="setting-item danger">
