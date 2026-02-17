@@ -1,0 +1,17 @@
+# Dependencies
+node_modules/
+icons/node_modules/
+icons/package.json
+icons/package-lock.json
+
+# Generated files (keep the icons though)
+icons/generate.js
+icons/generate-icons.html
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/

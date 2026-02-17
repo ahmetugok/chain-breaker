@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#1a1a2e">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Chain Breaker">
+    <title>Chain Breaker</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="icons/icon-192.png">
+    <link rel="icon" type="image/png" href="icons/icon-192.png">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="app-header">
+            <h1>⛓️‍💥 Chain Breaker</h1>
+            <p class="subtitle">Kötü alışkanlıklarını kır</p>
+        </header>
+
+        <!-- Main Stats -->
+        <section class="main-stats">
+            <div class="stat-card primary">
+                <div class="stat-icon">🔥</div>
+                <div class="stat-value" id="currentStreak">0</div>
+                <div class="stat-label">Günlük Seri</div>
+            </div>
+            <div class="stat-row">
+                <div class="stat-card secondary">
+                    <div class="stat-value" id="longestStreak">0</div>
+                    <div class="stat-label">En Uzun Seri</div>
+                </div>
+                <div class="stat-card secondary">
+                    <div class="stat-value" id="totalDays">0</div>
+                    <div class="stat-label">Toplam Gün</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Progress Ring -->
+        <section class="progress-section">
+            <div class="progress-ring-container">
+                <svg class="progress-ring" viewBox="0 0 200 200">
+                    <circle class="progress-ring-bg" cx="100" cy="100" r="90"/>
+                    <circle class="progress-ring-fill" cx="100" cy="100" r="90" id="progressRing"/>
+                </svg>
+                <div class="progress-text">
+                    <span id="progressPercent">0%</span>
+                    <small>Aylık Hedef</small>
+                </div>
+            </div>
+        </section>
+
+        <!-- Today's Status -->
+        <section class="today-section">
+            <h2>Bugün</h2>
+            <div class="today-status" id="todayStatus">
+                <button class="check-in-btn" id="checkInBtn">
+                    <span class="btn-icon">✅</span>
+                    <span class="btn-text">Bugün Dayanıyorum!</span>
+                </button>
+            </div>
+            <div class="relapse-container">
+                <button class="relapse-btn" id="relapseBtn">
+                    <span>😔 Bugün Başarısız Oldum</span>
+                </button>
+            </div>
+        </section>
+
+        <!-- Calendar -->
+        <section class="calendar-section">
+            <div class="calendar-header">
+                <button class="nav-btn" id="prevMonth">◀</button>
+                <h3 id="calendarTitle">Şubat 2026</h3>
+                <button class="nav-btn" id="nextMonth">▶</button>
+            </div>
+            <div class="calendar-grid">
+                <div class="calendar-weekdays">
+                    <span>Pzt</span>
+                    <span>Sal</span>
+                    <span>Çar</span>
+                    <span>Per</span>
+                    <span>Cum</span>
+                    <span>Cmt</span>
+                    <span>Paz</span>
+                </div>
+                <div class="calendar-days" id="calendarDays"></div>
+            </div>
+        </section>
+
+        <!-- Logs Section -->
+        <section class="logs-section">
+            <div class="section-header">
+                <h2>📝 Günlük Notlar</h2>
+                <button class="add-log-btn" id="addLogBtn">+ Ekle</button>
+            </div>
+            <div class="logs-list" id="logsList"></div>
+        </section>
+
+        <!-- Motivational Quotes -->
+        <section class="quote-section">
+            <div class="quote-card" id="quoteCard">
+                <p class="quote-text" id="quoteText">"Her gün, daha güçlü bir versiyonun için yeni bir fırsat."</p>
+                <button class="refresh-quote" id="refreshQuote">🔄</button>
+            </div>
+        </section>
+
+        <!-- Data Management -->
+        <section class="data-section">
+            <h2>📦 Veri Yönetimi</h2>
+            <p class="data-info">Verilerinizi başka bir cihaza taşımak için dışa aktarın</p>
+            <div class="data-buttons">
+                <button class="data-btn export" id="exportBtn">
+                    <span>📤</span> Dışa Aktar
+                </button>
+                <button class="data-btn import" id="importBtn">
+                    <span>📥</span> İçe Aktar
+                </button>
+                <input type="file" id="importFile" accept=".json" hidden>
+            </div>
+        </section>
+
+        <!-- Footer -->
+        <footer class="app-footer">
+            <p>Sen yapabilirsin! 💪</p>
+        </footer>
+    </div>
+
+    <!-- Log Modal -->
+    <div class="modal" id="logModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modalTitle">Günlük Not Ekle</h3>
+                <button class="close-modal" id="closeModal">✕</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="logMood">Ruh Hali</label>
+                    <div class="mood-selector" id="moodSelector">
+                        <button class="mood-btn" data-mood="1">😢</button>
+                        <button class="mood-btn" data-mood="2">😕</button>
+                        <button class="mood-btn" data-mood="3">😐</button>
+                        <button class="mood-btn" data-mood="4">🙂</button>
+                        <button class="mood-btn" data-mood="5">😄</button>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="logNote">Not</label>
+                    <textarea id="logNote" placeholder="Bugün nasıl hissediyorsun?"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="logTriggers">Tetikleyiciler</label>
+                    <input type="text" id="logTriggers" placeholder="Örn: stres, yalnızlık, sıkıntı">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" id="cancelLog">İptal</button>
+                <button class="btn-primary" id="saveLog">Kaydet</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div class="toast" id="toast"></div>
+
+    <script src="app.js"></script>
+</body>
+</html>
