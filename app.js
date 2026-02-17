@@ -626,13 +626,25 @@ const renderMoodAnalytics = () => {
     const container = document.getElementById('mood-chart');
     const dayNames = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
     
-    let html = '';
+    // Calculate stats from ALL dates in range first
     let totalMood = 0;
     let moodCount = 0;
     let moodDistribution = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
     
-    const displayDates = APP_STATE.analyticsPeriod === 'week' ? dates : dates.filter((_, i) => i % 4 === 0);
+    dates.forEach(date => {
+        const log = APP_STATE.dailyLogs[date];
+        const mood = log?.mood;
+        if (mood && mood > 0) {
+            totalMood += mood;
+            moodCount++;
+            moodDistribution[mood]++;
+        }
+    });
     
+    // For display, show subset of dates for monthly view
+    const displayDates = APP_STATE.analyticsPeriod === 'week' ? dates : dates.filter((_, i) => i % 4 === 0 || i === dates.length - 1);
+    
+    let html = '';
     displayDates.forEach(date => {
         const log = APP_STATE.dailyLogs[date];
         const mood = log?.mood || 0;
@@ -642,12 +654,6 @@ const renderMoodAnalytics = () => {
         const label = APP_STATE.analyticsPeriod === 'week' ? 
             dayNames[dayIndex === 0 ? 6 : dayIndex - 1] : 
             date.split('-')[2];
-        
-        if (mood > 0) {
-            totalMood += mood;
-            moodCount++;
-            moodDistribution[mood]++;
-        }
         
         html += `
             <div class="chart-bar">
@@ -660,7 +666,7 @@ const renderMoodAnalytics = () => {
     
     container.innerHTML = html;
     
-    // Summary
+    // Summary - using stats from ALL dates
     const avgMood = moodCount > 0 ? (totalMood / moodCount).toFixed(1) : '-';
     const mostCommon = Object.entries(moodDistribution).sort((a, b) => b[1] - a[1])[0];
     
@@ -702,12 +708,21 @@ const renderHabitAnalytics = () => {
         return;
     }
     
+    // Filter dates to only include days up to today
+    const today = getToday();
+    const validDates = dates.filter(d => d <= today);
+    
+    if (validDates.length === 0) {
+        container.innerHTML = '<div class="no-habits" style="padding: 20px;">Veri yok</div>';
+        return;
+    }
+    
     container.innerHTML = APP_STATE.habits.map(habit => {
         let completed = 0;
-        dates.forEach(date => {
+        validDates.forEach(date => {
             if (APP_STATE.dailyLogs[date]?.habits?.[habit.id]) completed++;
         });
-        const percent = Math.round((completed / dates.length) * 100);
+        const percent = Math.round((completed / validDates.length) * 100);
         
         return `
             <div class="habit-stat">
@@ -725,12 +740,18 @@ const renderHabitAnalytics = () => {
 };
 
 const renderWeeklyPattern = () => {
+    const dates = getDateRange();
     const container = document.getElementById('weekly-pattern');
     const dayNames = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
     const dayStats = [0, 0, 0, 0, 0, 0, 0];
     const dayCounts = [0, 0, 0, 0, 0, 0, 0];
     
-    Object.entries(APP_STATE.dailyLogs).forEach(([date, log]) => {
+    // Only use dates from the selected period
+    const today = getToday();
+    dates.filter(d => d <= today).forEach(date => {
+        const log = APP_STATE.dailyLogs[date];
+        if (!log) return;
+        
         const dayIndex = new Date(date).getDay();
         const adjustedIndex = dayIndex === 0 ? 6 : dayIndex - 1;
         
