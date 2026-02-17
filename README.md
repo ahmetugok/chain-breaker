@@ -2,6 +2,40 @@
 
 Kötü alışkanlıklarını kırmana yardımcı olan mobil-uyumlu web uygulaması.
 
+## 🌐 Canlı Demo
+
+**Uygulamaya telefonunuzdan erişin:**
+`https://KULLANICI_ADINIZ.github.io/chain-breaker/`
+
+## 🚀 GitHub Pages'e Yükleme (5 Dakika)
+
+### Adım 1: GitHub'da Repo Oluşturma
+1. [github.com/new](https://github.com/new) adresine gidin
+2. Repository name: `chain-breaker`
+3. Public seçin
+4. "Create repository" butonuna tıklayın
+
+### Adım 2: Kodu Yükleme
+Terminal'de şu komutları çalıştırın:
+```bash
+cd "/Users/ahmetugurgok/Chain Breaker"
+git remote add origin https://github.com/KULLANICI_ADINIZ/chain-breaker.git
+git push -u origin main
+```
+
+### Adım 3: GitHub Pages'i Aktifleştirme
+1. GitHub'da repo sayfanıza gidin
+2. **Settings** → **Pages** 
+3. Source: **GitHub Actions** seçin
+4. Birkaç dakika bekleyin, otomatik deploy edilecek!
+
+### Adım 4: Telefonunuza Yükleyin
+1. `https://KULLANICI_ADINIZ.github.io/chain-breaker/` adresine gidin
+2. **iPhone**: Safari → Paylaş → "Ana Ekrana Ekle"
+3. **Android**: Chrome → Menü → "Ana ekrana ekle"
+
+---
+
 ## 🚀 Özellikler
 
 - **📱 Mobil Uyumlu PWA**: Telefonunuza yükleyebilirsiniz (Ana ekrana ekle)
