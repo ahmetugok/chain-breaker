@@ -18,15 +18,37 @@
         <!-- Header -->
         <header class="app-header">
             <h1>⛓️‍💥 Chain Breaker</h1>
-            <p class="subtitle">Kötü alışkanlıklarını kır</p>
+            <p class="subtitle">Alışkanlıklarını takip et</p>
         </header>
+
+        <!-- Daily Mood Section -->
+        <section class="mood-section">
+            <h2>Bugün Nasıl Hissediyorsun?</h2>
+            <p class="current-mood-text" id="currentMoodText">Duygu durumunu seç</p>
+            <div class="daily-mood-selector">
+                <button class="daily-mood-btn" data-mood="1">😢</button>
+                <button class="daily-mood-btn" data-mood="2">😕</button>
+                <button class="daily-mood-btn" data-mood="3">😐</button>
+                <button class="daily-mood-btn" data-mood="4">🙂</button>
+                <button class="daily-mood-btn" data-mood="5">😄</button>
+            </div>
+        </section>
+
+        <!-- Habits Section -->
+        <section class="habits-section">
+            <div class="section-header">
+                <h2>📋 Alışkanlıklarım</h2>
+                <button class="add-habit-btn" id="addHabitBtn">+ Ekle</button>
+            </div>
+            <div class="habits-list" id="habitsList"></div>
+        </section>
 
         <!-- Main Stats -->
         <section class="main-stats">
             <div class="stat-card primary">
                 <div class="stat-icon">🔥</div>
                 <div class="stat-value" id="currentStreak">0</div>
-                <div class="stat-label">Günlük Seri</div>
+                <div class="stat-label">Toplam Seri</div>
             </div>
             <div class="stat-row">
                 <div class="stat-card secondary">
@@ -35,7 +57,7 @@
                 </div>
                 <div class="stat-card secondary">
                     <div class="stat-value" id="totalDays">0</div>
-                    <div class="stat-label">Toplam Gün</div>
+                    <div class="stat-label">Toplam Başarı</div>
                 </div>
             </div>
         </section>
@@ -49,24 +71,8 @@
                 </svg>
                 <div class="progress-text">
                     <span id="progressPercent">0%</span>
-                    <small>Aylık Hedef</small>
+                    <small>Aylık Başarı</small>
                 </div>
-            </div>
-        </section>
-
-        <!-- Today's Status -->
-        <section class="today-section">
-            <h2>Bugün</h2>
-            <div class="today-status" id="todayStatus">
-                <button class="check-in-btn" id="checkInBtn">
-                    <span class="btn-icon">✅</span>
-                    <span class="btn-text">Bugün Dayanıyorum!</span>
-                </button>
-            </div>
-            <div class="relapse-container">
-                <button class="relapse-btn" id="relapseBtn">
-                    <span>😔 Bugün Başarısız Oldum</span>
-                </button>
             </div>
         </section>
 
@@ -76,6 +82,10 @@
                 <button class="nav-btn" id="prevMonth">◀</button>
                 <h3 id="calendarTitle">Şubat 2026</h3>
                 <button class="nav-btn" id="nextMonth">▶</button>
+            </div>
+            <div class="calendar-legend">
+                <span class="legend-item"><span class="legend-dot success"></span> Tamamlandı</span>
+                <span class="legend-item"><span class="legend-dot partial"></span> Kısmi</span>
             </div>
             <div class="calendar-grid">
                 <div class="calendar-weekdays">
@@ -127,6 +137,59 @@
         <footer class="app-footer">
             <p>Sen yapabilirsin! 💪</p>
         </footer>
+    </div>
+
+    <!-- Habit Modal -->
+    <div class="modal" id="habitModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="habitModalTitle">Yeni Alışkanlık</h3>
+                <button class="close-modal" id="closeHabitModal">✕</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="habitName">Alışkanlık Adı</label>
+                    <input type="text" id="habitName" placeholder="Örn: Sigara içmemek">
+                </div>
+                <div class="form-group">
+                    <label>İkon Seç</label>
+                    <div class="icon-selector">
+                        <button class="icon-btn" data-icon="🚭">🚭</button>
+                        <button class="icon-btn" data-icon="🏃">🏃</button>
+                        <button class="icon-btn" data-icon="📚">📚</button>
+                        <button class="icon-btn" data-icon="💪">💪</button>
+                        <button class="icon-btn" data-icon="🧘">🧘</button>
+                        <button class="icon-btn" data-icon="💤">💤</button>
+                        <button class="icon-btn" data-icon="🥗">🥗</button>
+                        <button class="icon-btn" data-icon="💧">💧</button>
+                        <button class="icon-btn" data-icon="📵">📵</button>
+                        <button class="icon-btn" data-icon="🎮">🎮</button>
+                        <button class="icon-btn" data-icon="🍺">🍺</button>
+                        <button class="icon-btn" data-icon="☕">☕</button>
+                        <button class="icon-btn" data-icon="🍫">🍫</button>
+                        <button class="icon-btn" data-icon="⭐">⭐</button>
+                        <button class="icon-btn" data-icon="❤️">❤️</button>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Renk Seç</label>
+                    <div class="color-selector">
+                        <button class="color-btn" data-color="#e94560" style="background: #e94560"></button>
+                        <button class="color-btn" data-color="#00d9a5" style="background: #00d9a5"></button>
+                        <button class="color-btn" data-color="#533483" style="background: #533483"></button>
+                        <button class="color-btn" data-color="#ffc107" style="background: #ffc107"></button>
+                        <button class="color-btn" data-color="#00b4d8" style="background: #00b4d8"></button>
+                        <button class="color-btn" data-color="#ff6b6b" style="background: #ff6b6b"></button>
+                        <button class="color-btn" data-color="#4ecdc4" style="background: #4ecdc4"></button>
+                        <button class="color-btn" data-color="#a855f7" style="background: #a855f7"></button>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" id="cancelHabit">İptal</button>
+                <button class="btn-primary" id="saveHabit">Kaydet</button>
+            </div>
+        </div>
     </div>
 
     <!-- Log Modal -->
