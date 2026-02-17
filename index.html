@@ -37,9 +37,16 @@
             <!-- HOME PAGE -->
             <div id="home-page" class="page active">
                 <div class="page-content">
+                    <!-- Quote Card -->
+                    <section class="quote-card">
+                        <h3 class="card-title">💫 Günün Sözü</h3>
+                        <button class="refresh-btn" onclick="refreshQuote()">🔄</button>
+                        <p class="quote-text" id="quote-text"></p>
+                    </section>
+
                     <!-- Today Progress Card -->
                     <section class="today-card">
-                        <h2 class="section-title">Bugün</h2>
+                        <h2 class="section-title" id="today-date">Bugün</h2>
                         <div class="today-content">
                             <div class="progress-ring-wrapper">
                                 <svg class="progress-ring" viewBox="0 0 120 120">
@@ -64,19 +71,6 @@
                         </div>
                     </section>
 
-                    <!-- Mood Card -->
-                    <section class="mood-card">
-                        <h3 class="card-title">Bugün nasıl hissediyorsun?</h3>
-                        <p class="mood-subtitle">Günlük duygu durumunu kaydet</p>
-                        <div class="mood-buttons">
-                            <button class="mood-btn" data-mood="1">😢</button>
-                            <button class="mood-btn" data-mood="2">😕</button>
-                            <button class="mood-btn" data-mood="3">😐</button>
-                            <button class="mood-btn" data-mood="4">😊</button>
-                            <button class="mood-btn" data-mood="5">😄</button>
-                        </div>
-                    </section>
-
                     <!-- Habits Card -->
                     <section class="habits-card">
                         <div class="card-header">
@@ -88,11 +82,17 @@
                         </div>
                     </section>
 
-                    <!-- Quote Card -->
-                    <section class="quote-card">
-                        <h3 class="card-title">💫 Günün Sözü</h3>
-                        <button class="refresh-btn" onclick="refreshQuote()">🔄</button>
-                        <p class="quote-text" id="quote-text"></p>
+                    <!-- Mood Card -->
+                    <section class="mood-card">
+                        <h3 class="card-title">Bugün nasıl hissediyorsun?</h3>
+                        <p class="mood-subtitle">Günlük duygu durumunu kaydet</p>
+                        <div class="mood-buttons">
+                            <button class="mood-btn" data-mood="1">😢</button>
+                            <button class="mood-btn" data-mood="2">😕</button>
+                            <button class="mood-btn" data-mood="3">😐</button>
+                            <button class="mood-btn" data-mood="4">😊</button>
+                            <button class="mood-btn" data-mood="5">😄</button>
+                        </div>
                     </section>
                 </div>
             </div>

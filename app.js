@@ -158,11 +158,22 @@ const switchPage = (pageName) => {
 
 // ==================== HOME PAGE ====================
 const renderHome = () => {
+    renderTodayDate();
     renderProgress();
     renderStats();
     renderTodayMood();
     renderHabits();
     renderQuote();
+};
+
+const renderTodayDate = () => {
+    const today = new Date();
+    const options = { day: 'numeric', month: 'long', year: 'numeric', weekday: 'long' };
+    const dateStr = today.toLocaleDateString('tr-TR', options);
+    const todayDateEl = document.getElementById('today-date');
+    if (todayDateEl) {
+        todayDateEl.textContent = dateStr;
+    }
 };
 
 const renderProgress = () => {
