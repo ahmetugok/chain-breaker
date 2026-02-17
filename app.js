@@ -1,822 +1,896 @@
-// Chain Breaker App - Main JavaScript v2.0
+// ==================== APP STATE ====================
+const APP_STATE = {
+    habits: [],
+    dailyLogs: {},
+    settings: {
+        theme: 'dark'
+    },
+    currentPage: 'home',
+    calendarMonth: new Date().getMonth(),
+    calendarYear: new Date().getFullYear(),
+    editingHabit: null,
+    selectedDate: null,
+    analyticsPeriod: 'week'
+};
 
-class ChainBreakerApp {
-    constructor() {
-        this.data = this.loadData();
-        this.currentMonth = new Date().getMonth();
-        this.currentYear = new Date().getFullYear();
-        this.selectedMood = null;
-        this.editingHabitId = null;
-        
-        this.quotes = [
-            "Her gün, daha güçlü bir versiyonun için yeni bir fırsat.",
-            "Düşmek başarısızlık değildir, düştüğün yerde kalmak başarısızlıktır.",
-            "Bir adım daha. Sadece bir adım daha.",
-            "Geçmişin hatalarını değiştiremezsin ama geleceğini şekillendirebilirsin.",
-            "Güçlü insanlar zor günlerde yetişir.",
-            "Bugün yarının temelini atıyorsun.",
-            "Her 'hayır' dediğinde, kendine 'evet' demiş oluyorsun.",
-            "Küçük zaferler büyük değişimlerin başlangıcıdır.",
-            "Mükemmel olmak zorunda değilsin, sadece vazgeçme.",
-            "İrade kası gibidir, kullandıkça güçlenir.",
-            "Bugün zor olabilir ama imkansız değil.",
-            "Kendine verdiğin sözleri tut.",
-            "Her sabah yeni bir başlangıç.",
-            "Acı geçici, gurur kalıcıdır.",
-            "Bugünün fedakarlığı, yarının özgürlüğüdür."
-        ];
+// ==================== QUOTES ====================
+const QUOTES = [
+    "Küçük adımlar büyük değişimlere yol açar.",
+    "Her gün yeni bir başlangıçtır.",
+    "Disiplin özgürlüktür.",
+    "Bugün yaptıkların yarınını şekillendirir.",
+    "Başarı alışkanlıkların toplamıdır.",
+    "Süreklilik mükemmeliyetten önemlidir.",
+    "Bir gün değil, birinci gün.",
+    "Zinciri kırma, güçlendır.",
+    "Her deneme seni güçlendirir.",
+    "Sadece bugüne odaklan.",
+    "Küçük zaferler büyük başarılara dönüşür.",
+    "Alışkanlıklar karakteri oluşturur.",
+    "Bugün için şükret, yarın için çalış.",
+    "İlerleme mükemmellik değil, hedeftir.",
+    "Kendine verdiğin sözü tut."
+];
 
-        this.moodEmojis = ['', '😢', '😕', '😐', '🙂', '😄'];
-        this.moodLabels = ['', 'Çok Kötü', 'Kötü', 'Normal', 'İyi', 'Çok İyi'];
+const HABIT_ICONS = ['🏃', '📚', '💧', '🧘', '💪', '🎯', '✍️', '🎨', '🎵', '🌱', '💤', '🍎', '🧠', '❤️', '⭐'];
+const HABIT_COLORS = ['#6366f1', '#8b5cf6', '#ec4899', '#ef4444', '#f97316', '#eab308', '#22c55e', '#10b981', '#14b8a6', '#06b6d4', '#3b82f6'];
+const MOOD_EMOJIS = { 1: '😢', 2: '😕', 3: '😐', 4: '😊', 5: '😄' };
+const MOOD_COLORS = { 1: '#ef4444', 2: '#f97316', 3: '#eab308', 4: '#22c55e', 5: '#10b981' };
 
-        this.init();
-    }
+// ==================== UTILITIES ====================
+const getToday = () => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
 
-    // Initialize the app
-    init() {
-        this.bindEvents();
-        this.renderHabits();
-        this.renderDailyMood();
-        this.updateStats();
-        this.renderCalendar();
-        this.renderLogs();
-        this.showRandomQuote();
-        this.registerServiceWorker();
-    }
+const formatDate = (dateStr) => {
+    const d = new Date(dateStr);
+    return d.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' });
+};
 
-    // Load data from localStorage
-    loadData() {
-        const defaultData = {
-            habits: [],
-            dailyMoods: {},
-            logs: [],
-            settings: {
-                monthlyGoal: 30
+const getDayOfWeek = (dateStr) => {
+    return new Date(dateStr).toLocaleDateString('tr-TR', { weekday: 'long' });
+};
+
+const showToast = (message, type = 'info') => {
+    const toast = document.getElementById('toast');
+    toast.textContent = message;
+    toast.className = `toast ${type} show`;
+    setTimeout(() => toast.classList.remove('show'), 3000);
+};
+
+const saveData = () => {
+    localStorage.setItem('chainbreaker_habits', JSON.stringify(APP_STATE.habits));
+    localStorage.setItem('chainbreaker_logs', JSON.stringify(APP_STATE.dailyLogs));
+    localStorage.setItem('chainbreaker_settings', JSON.stringify(APP_STATE.settings));
+};
+
+const loadData = () => {
+    const habits = localStorage.getItem('chainbreaker_habits');
+    const logs = localStorage.getItem('chainbreaker_logs');
+    const settings = localStorage.getItem('chainbreaker_settings');
+    
+    if (habits) APP_STATE.habits = JSON.parse(habits);
+    if (logs) APP_STATE.dailyLogs = JSON.parse(logs);
+    if (settings) APP_STATE.settings = JSON.parse(settings);
+};
+
+// ==================== STREAK CALCULATION ====================
+const calculateStreak = (habitId, type = 'current') => {
+    const today = getToday();
+    const dates = Object.keys(APP_STATE.dailyLogs).sort().reverse();
+    let streak = 0;
+    
+    if (type === 'current') {
+        for (const date of dates) {
+            if (date > today) continue;
+            const log = APP_STATE.dailyLogs[date];
+            if (log?.habits?.[habitId]) {
+                streak++;
+            } else if (date < today) {
+                break;
             }
-        };
-
-        try {
-            const saved = localStorage.getItem('chainBreakerData');
-            if (saved) {
-                const parsed = JSON.parse(saved);
-                // Migration: eski format ise dönüştür
-                if (parsed.checkIns && !parsed.habits) {
-                    return {
-                        ...defaultData,
-                        habits: [{
-                            id: 1,
-                            name: 'Alışkanlık',
-                            icon: '⛓️',
-                            color: '#e94560',
-                            checkIns: parsed.checkIns
-                        }],
-                        dailyMoods: {},
-                        logs: parsed.logs || []
-                    };
-                }
-                return { ...defaultData, ...parsed };
-            }
-            return defaultData;
-        } catch (e) {
-            console.error('Veri yüklenirken hata:', e);
-            return defaultData;
+        }
+    } else if (type === 'monthly') {
+        const thisMonth = today.substring(0, 7);
+        for (const date of dates) {
+            if (!date.startsWith(thisMonth)) continue;
+            const log = APP_STATE.dailyLogs[date];
+            if (log?.habits?.[habitId]) streak++;
         }
     }
+    
+    return streak;
+};
 
-    // Save data to localStorage
-    saveData() {
-        try {
-            localStorage.setItem('chainBreakerData', JSON.stringify(this.data));
-        } catch (e) {
-            console.error('Veri kaydedilirken hata:', e);
-            this.showToast('Veri kaydedilemedi!', 'error');
+const getTotalDailyStreak = () => {
+    const today = getToday();
+    const dates = Object.keys(APP_STATE.dailyLogs).sort().reverse();
+    let streak = 0;
+    
+    for (const date of dates) {
+        if (date > today) continue;
+        const log = APP_STATE.dailyLogs[date];
+        const allCompleted = APP_STATE.habits.length > 0 && 
+            APP_STATE.habits.every(h => log?.habits?.[h.id]);
+        
+        if (allCompleted) {
+            streak++;
+        } else if (date < today) {
+            break;
         }
     }
+    
+    return streak;
+};
 
-    // Bind all event listeners
-    bindEvents() {
-        // Add habit button
-        document.getElementById('addHabitBtn').addEventListener('click', () => this.openHabitModal());
-        
-        // Habit modal
-        document.getElementById('closeHabitModal').addEventListener('click', () => this.closeHabitModal());
-        document.getElementById('cancelHabit').addEventListener('click', () => this.closeHabitModal());
-        document.getElementById('saveHabit').addEventListener('click', () => this.saveHabit());
-        
-        // Icon selector
-        document.querySelectorAll('.icon-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => this.selectIcon(e.target));
-        });
-        
-        // Color selector
-        document.querySelectorAll('.color-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => this.selectColor(e.target));
-        });
-        
-        // Daily mood selector
-        document.querySelectorAll('.daily-mood-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => this.setDailyMood(parseInt(e.target.dataset.mood)));
-        });
-        
-        // Calendar navigation
-        document.getElementById('prevMonth').addEventListener('click', () => this.changeMonth(-1));
-        document.getElementById('nextMonth').addEventListener('click', () => this.changeMonth(1));
-        
-        // Log modal
-        document.getElementById('addLogBtn').addEventListener('click', () => this.openLogModal());
-        document.getElementById('closeModal').addEventListener('click', () => this.closeLogModal());
-        document.getElementById('cancelLog').addEventListener('click', () => this.closeLogModal());
-        document.getElementById('saveLog').addEventListener('click', () => this.saveLog());
-        
-        // Mood selector in log modal
-        document.querySelectorAll('#moodSelector .mood-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => this.selectMood(e.target));
-        });
-        
-        // Quote refresh
-        document.getElementById('refreshQuote').addEventListener('click', () => this.showRandomQuote());
-        
-        // Data management
-        document.getElementById('exportBtn').addEventListener('click', () => this.exportData());
-        document.getElementById('importBtn').addEventListener('click', () => {
-            document.getElementById('importFile').click();
-        });
-        document.getElementById('importFile').addEventListener('change', (e) => this.importData(e));
-        
-        // Modal backdrop clicks
-        document.getElementById('logModal').addEventListener('click', (e) => {
-            if (e.target.id === 'logModal') this.closeLogModal();
-        });
-        document.getElementById('habitModal').addEventListener('click', (e) => {
-            if (e.target.id === 'habitModal') this.closeHabitModal();
-        });
+const getMonthlyStreak = () => {
+    const today = getToday();
+    const thisMonth = today.substring(0, 7);
+    let count = 0;
+    
+    for (const date of Object.keys(APP_STATE.dailyLogs)) {
+        if (!date.startsWith(thisMonth)) continue;
+        const log = APP_STATE.dailyLogs[date];
+        const allCompleted = APP_STATE.habits.length > 0 && 
+            APP_STATE.habits.every(h => log?.habits?.[h.id]);
+        if (allCompleted) count++;
     }
+    
+    return count;
+};
 
-    // Get today's date string
-    getTodayString() {
-        return new Date().toISOString().split('T')[0];
+// ==================== NAVIGATION ====================
+const switchPage = (pageName) => {
+    APP_STATE.currentPage = pageName;
+    
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.getElementById(`${pageName}-page`).classList.add('active');
+    
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    document.querySelector(`[data-page="${pageName}"]`).classList.add('active');
+    
+    if (pageName === 'home') renderHome();
+    else if (pageName === 'calendar') renderCalendar();
+    else if (pageName === 'analytics') renderAnalytics();
+    else if (pageName === 'settings') renderSettings();
+};
+
+// ==================== HOME PAGE ====================
+const renderHome = () => {
+    renderProgress();
+    renderStats();
+    renderTodayMood();
+    renderHabits();
+    renderQuote();
+};
+
+const renderProgress = () => {
+    const today = getToday();
+    const todayLog = APP_STATE.dailyLogs[today] || { habits: {} };
+    const totalHabits = APP_STATE.habits.length;
+    const completed = totalHabits > 0 ? 
+        APP_STATE.habits.filter(h => todayLog.habits?.[h.id]).length : 0;
+    const percent = totalHabits > 0 ? Math.round((completed / totalHabits) * 100) : 0;
+    
+    const circumference = 2 * Math.PI * 52;
+    const offset = circumference - (percent / 100) * circumference;
+    
+    const progressRing = document.querySelector('.progress-ring-fill');
+    if (progressRing) {
+        progressRing.style.strokeDashoffset = offset;
     }
+    
+    const progressValue = document.querySelector('.progress-value');
+    if (progressValue) {
+        progressValue.textContent = `${completed}/${totalHabits}`;
+    }
+};
 
-    // ==================== HABITS ====================
+const renderStats = () => {
+    const dailyStreak = getTotalDailyStreak();
+    const monthlyStreak = getMonthlyStreak();
+    
+    document.getElementById('daily-streak').textContent = dailyStreak;
+    document.getElementById('monthly-streak').textContent = monthlyStreak;
+};
 
-    // Render habits list
-    renderHabits() {
-        const container = document.getElementById('habitsList');
-        const today = this.getTodayString();
+const renderTodayMood = () => {
+    const today = getToday();
+    const todayLog = APP_STATE.dailyLogs[today];
+    const currentMood = todayLog?.mood;
+    
+    document.querySelectorAll('.mood-card .mood-btn').forEach(btn => {
+        const mood = parseInt(btn.dataset.mood);
+        btn.classList.toggle('selected', mood === currentMood);
+    });
+};
 
-        if (this.data.habits.length === 0) {
-            container.innerHTML = `
-                <div class="no-habits">
-                    <p>Henüz alışkanlık eklenmedi</p>
-                    <p>İlk alışkanlığını eklemek için + butonuna tıkla</p>
+const renderHabits = () => {
+    const container = document.getElementById('habits-list');
+    const today = getToday();
+    const todayLog = APP_STATE.dailyLogs[today] || { habits: {} };
+    
+    if (APP_STATE.habits.length === 0) {
+        container.innerHTML = `
+            <div class="no-habits">
+                <p>Henüz alışkanlık eklemediniz</p>
+                <p style="font-size: 0.85rem; margin-top: 8px;">+ butonuna tıklayarak başlayın</p>
+            </div>
+        `;
+        return;
+    }
+    
+    container.innerHTML = APP_STATE.habits.map(habit => {
+        const isChecked = todayLog.habits?.[habit.id] || false;
+        const streak = calculateStreak(habit.id);
+        
+        return `
+            <div class="habit-item" style="--habit-color: ${habit.color}">
+                <span class="habit-icon">${habit.icon}</span>
+                <div class="habit-info">
+                    <div class="habit-name">${habit.name}</div>
+                    <div class="habit-streak">🔥 ${streak} gün</div>
                 </div>
-            `;
-            return;
-        }
-
-        const html = this.data.habits.map(habit => {
-            const streak = this.calculateStreak(habit);
-            const isCheckedToday = habit.checkIns[today] === 'success';
-            const isFailedToday = habit.checkIns[today] === 'fail';
-            
-            return `
-                <div class="habit-card" style="--habit-color: ${habit.color}">
-                    <div class="habit-header">
-                        <div class="habit-info">
-                            <span class="habit-icon">${habit.icon}</span>
-                            <span class="habit-name">${habit.name}</span>
-                        </div>
-                        <div class="habit-streak">
-                            <span class="streak-fire">🔥</span>
-                            <span class="streak-count">${streak}</span>
-                        </div>
-                    </div>
-                    <div class="habit-actions">
-                        <button class="habit-check-btn ${isCheckedToday ? 'checked' : ''}" 
-                                onclick="app.checkHabit(${habit.id})" 
-                                ${isCheckedToday || isFailedToday ? 'disabled' : ''}>
-                            ${isCheckedToday ? '✅ Yapıldı' : '✓ Bugün Yaptım'}
-                        </button>
-                        <button class="habit-fail-btn ${isFailedToday ? 'failed' : ''}" 
-                                onclick="app.failHabit(${habit.id})"
-                                ${isCheckedToday || isFailedToday ? 'disabled' : ''}>
-                            ${isFailedToday ? '❌' : '✗'}
-                        </button>
-                        <button class="habit-menu-btn" onclick="app.showHabitMenu(${habit.id})">⋮</button>
-                    </div>
+                <div class="habit-actions">
+                    <button class="habit-check ${isChecked ? 'checked' : ''}" 
+                            onclick="toggleHabit('${habit.id}')">
+                        ${isChecked ? '✓' : ''}
+                    </button>
+                    <button class="habit-menu" onclick="openHabitMenu('${habit.id}')">⋮</button>
                 </div>
-            `;
-        }).join('');
+            </div>
+        `;
+    }).join('');
+};
 
-        container.innerHTML = html;
+const renderQuote = () => {
+    const today = getToday();
+    const index = today.split('-').reduce((a, b) => parseInt(a) + parseInt(b), 0) % QUOTES.length;
+    document.getElementById('quote-text').textContent = `"${QUOTES[index]}"`;
+};
+
+const refreshQuote = () => {
+    const index = Math.floor(Math.random() * QUOTES.length);
+    const quoteEl = document.getElementById('quote-text');
+    quoteEl.style.opacity = '0';
+    setTimeout(() => {
+        quoteEl.textContent = `"${QUOTES[index]}"`;
+        quoteEl.style.opacity = '1';
+    }, 200);
+};
+
+// ==================== MOOD ====================
+const setMood = (mood) => {
+    const today = getToday();
+    if (!APP_STATE.dailyLogs[today]) {
+        APP_STATE.dailyLogs[today] = { habits: {}, mood: null, note: '' };
     }
+    APP_STATE.dailyLogs[today].mood = mood;
+    saveData();
+    renderTodayMood();
+    showToast(`Duygu durumu: ${MOOD_EMOJIS[mood]}`, 'success');
+};
 
-    // Check habit for today
-    checkHabit(habitId) {
-        const habit = this.data.habits.find(h => h.id === habitId);
-        if (!habit) return;
-
-        const today = this.getTodayString();
-        habit.checkIns[today] = 'success';
-        this.saveData();
-        this.renderHabits();
-        this.updateStats();
-        this.renderCalendar();
-
-        const streak = this.calculateStreak(habit);
-        if (streak % 7 === 0 && streak > 0) {
-            this.showToast(`🎉 ${habit.name}: ${streak} günlük seri!`, 'success');
-        } else {
-            this.showToast(`${habit.icon} ${habit.name} tamamlandı!`, 'success');
-        }
+// ==================== HABITS ====================
+const toggleHabit = (habitId) => {
+    const today = getToday();
+    if (!APP_STATE.dailyLogs[today]) {
+        APP_STATE.dailyLogs[today] = { habits: {}, mood: null, note: '' };
     }
+    
+    const current = APP_STATE.dailyLogs[today].habits[habitId] || false;
+    APP_STATE.dailyLogs[today].habits[habitId] = !current;
+    
+    saveData();
+    renderHabits();
+    renderProgress();
+    renderStats();
+};
 
-    // Fail habit for today
-    failHabit(habitId) {
-        const habit = this.data.habits.find(h => h.id === habitId);
-        if (!habit) return;
-
-        if (confirm(`${habit.name} için bugünü başarısız olarak işaretlemek istediğine emin misin?`)) {
-            const today = this.getTodayString();
-            habit.checkIns[today] = 'fail';
-            this.saveData();
-            this.renderHabits();
-            this.updateStats();
-            this.renderCalendar();
-            this.showToast('Yarın yeni bir gün! 🌅', 'error');
-        }
-    }
-
-    // Show habit menu (edit/delete)
-    showHabitMenu(habitId) {
-        const habit = this.data.habits.find(h => h.id === habitId);
-        if (!habit) return;
-
-        const action = prompt(`${habit.name}\n\n1 - Düzenle\n2 - Sil\n\nSeçiminizi yazın (1 veya 2):`);
+const openHabitModal = (habitId = null) => {
+    APP_STATE.editingHabit = habitId;
+    const modal = document.getElementById('habit-modal');
+    const title = document.getElementById('habit-modal-title');
+    const nameInput = document.getElementById('habit-name');
+    const deleteBtn = document.getElementById('delete-habit-btn');
+    
+    if (habitId) {
+        const habit = APP_STATE.habits.find(h => h.id === habitId);
+        title.textContent = 'Alışkanlığı Düzenle';
+        nameInput.value = habit.name;
+        deleteBtn.style.display = 'block';
         
-        if (action === '1') {
-            this.editHabit(habitId);
-        } else if (action === '2') {
-            this.deleteHabit(habitId);
-        }
-    }
-
-    // Edit habit
-    editHabit(habitId) {
-        const habit = this.data.habits.find(h => h.id === habitId);
-        if (!habit) return;
-
-        this.editingHabitId = habitId;
-        document.getElementById('habitModalTitle').textContent = 'Alışkanlığı Düzenle';
-        document.getElementById('habitName').value = habit.name;
-        
-        // Select icon
         document.querySelectorAll('.icon-btn').forEach(btn => {
             btn.classList.toggle('selected', btn.dataset.icon === habit.icon);
         });
-        
-        // Select color
         document.querySelectorAll('.color-btn').forEach(btn => {
             btn.classList.toggle('selected', btn.dataset.color === habit.color);
         });
-
-        document.getElementById('habitModal').classList.add('active');
-    }
-
-    // Delete habit
-    deleteHabit(habitId) {
-        const habit = this.data.habits.find(h => h.id === habitId);
-        if (!habit) return;
-
-        if (confirm(`"${habit.name}" alışkanlığını silmek istediğine emin misin? Tüm veriler silinecek.`)) {
-            this.data.habits = this.data.habits.filter(h => h.id !== habitId);
-            this.saveData();
-            this.renderHabits();
-            this.updateStats();
-            this.renderCalendar();
-            this.showToast('Alışkanlık silindi', 'success');
-        }
-    }
-
-    // Open habit modal
-    openHabitModal() {
-        this.editingHabitId = null;
-        document.getElementById('habitModalTitle').textContent = 'Yeni Alışkanlık';
-        document.getElementById('habitName').value = '';
+    } else {
+        title.textContent = 'Yeni Alışkanlık';
+        nameInput.value = '';
+        deleteBtn.style.display = 'none';
+        
         document.querySelectorAll('.icon-btn').forEach(btn => btn.classList.remove('selected'));
         document.querySelectorAll('.color-btn').forEach(btn => btn.classList.remove('selected'));
-        document.getElementById('habitModal').classList.add('active');
+        document.querySelector('.icon-btn')?.classList.add('selected');
+        document.querySelector('.color-btn')?.classList.add('selected');
     }
+    
+    modal.classList.add('active');
+};
 
-    // Close habit modal
-    closeHabitModal() {
-        document.getElementById('habitModal').classList.remove('active');
-        this.editingHabitId = null;
+const closeHabitModal = () => {
+    document.getElementById('habit-modal').classList.remove('active');
+    APP_STATE.editingHabit = null;
+};
+
+const saveHabit = () => {
+    const name = document.getElementById('habit-name').value.trim();
+    const icon = document.querySelector('.icon-btn.selected')?.dataset.icon || '🎯';
+    const color = document.querySelector('.color-btn.selected')?.dataset.color || '#6366f1';
+    
+    if (!name) {
+        showToast('Alışkanlık adı gerekli', 'error');
+        return;
     }
-
-    // Select icon
-    selectIcon(btn) {
-        document.querySelectorAll('.icon-btn').forEach(b => b.classList.remove('selected'));
-        btn.classList.add('selected');
-    }
-
-    // Select color
-    selectColor(btn) {
-        document.querySelectorAll('.color-btn').forEach(b => b.classList.remove('selected'));
-        btn.classList.add('selected');
-    }
-
-    // Save habit
-    saveHabit() {
-        const name = document.getElementById('habitName').value.trim();
-        const selectedIcon = document.querySelector('.icon-btn.selected');
-        const selectedColor = document.querySelector('.color-btn.selected');
-
-        if (!name) {
-            this.showToast('Lütfen bir isim girin', 'error');
-            return;
-        }
-
-        const icon = selectedIcon ? selectedIcon.dataset.icon : '⭐';
-        const color = selectedColor ? selectedColor.dataset.color : '#e94560';
-
-        if (this.editingHabitId) {
-            // Update existing
-            const habit = this.data.habits.find(h => h.id === this.editingHabitId);
-            if (habit) {
-                habit.name = name;
-                habit.icon = icon;
-                habit.color = color;
-            }
-        } else {
-            // Create new
-            const newHabit = {
-                id: Date.now(),
-                name: name,
-                icon: icon,
-                color: color,
-                checkIns: {}
-            };
-            this.data.habits.push(newHabit);
-        }
-
-        this.saveData();
-        this.renderHabits();
-        this.updateStats();
-        this.closeHabitModal();
-        this.showToast(this.editingHabitId ? 'Alışkanlık güncellendi!' : 'Alışkanlık eklendi!', 'success');
-    }
-
-    // Calculate streak for a habit
-    calculateStreak(habit) {
-        let streak = 0;
-        let date = new Date();
-        
-        while (true) {
-            const dateStr = date.toISOString().split('T')[0];
-            
-            if (habit.checkIns[dateStr] === 'success') {
-                streak++;
-                date.setDate(date.getDate() - 1);
-            } else if (habit.checkIns[dateStr] === 'fail') {
-                break;
-            } else {
-                if (dateStr === this.getTodayString()) {
-                    date.setDate(date.getDate() - 1);
-                } else {
-                    break;
-                }
-            }
-        }
-        
-        return streak;
-    }
-
-    // ==================== DAILY MOOD ====================
-
-    // Render daily mood selector
-    renderDailyMood() {
-        const today = this.getTodayString();
-        const todayMood = this.data.dailyMoods[today];
-
-        document.querySelectorAll('.daily-mood-btn').forEach(btn => {
-            const mood = parseInt(btn.dataset.mood);
-            btn.classList.toggle('selected', mood === todayMood);
+    
+    if (APP_STATE.editingHabit) {
+        const habit = APP_STATE.habits.find(h => h.id === APP_STATE.editingHabit);
+        habit.name = name;
+        habit.icon = icon;
+        habit.color = color;
+        showToast('Alışkanlık güncellendi', 'success');
+    } else {
+        APP_STATE.habits.push({
+            id: Date.now().toString(),
+            name,
+            icon,
+            color,
+            createdAt: getToday()
         });
-
-        const moodText = document.getElementById('currentMoodText');
-        if (todayMood) {
-            moodText.textContent = `Bugün: ${this.moodEmojis[todayMood]} ${this.moodLabels[todayMood]}`;
-        } else {
-            moodText.textContent = 'Duygu durumunu seç';
-        }
+        showToast('Alışkanlık eklendi', 'success');
     }
+    
+    saveData();
+    closeHabitModal();
+    renderHabits();
+    renderProgress();
+};
 
-    // Set daily mood
-    setDailyMood(mood) {
-        const today = this.getTodayString();
-        this.data.dailyMoods[today] = mood;
-        this.saveData();
-        this.renderDailyMood();
-        this.renderCalendar();
-        this.showToast(`${this.moodEmojis[mood]} Duygu durumun kaydedildi!`, 'success');
+const deleteHabit = () => {
+    if (!APP_STATE.editingHabit) return;
+    
+    if (confirm('Bu alışkanlığı silmek istediğinize emin misiniz?')) {
+        APP_STATE.habits = APP_STATE.habits.filter(h => h.id !== APP_STATE.editingHabit);
+        saveData();
+        closeHabitModal();
+        renderHabits();
+        renderProgress();
+        showToast('Alışkanlık silindi', 'success');
     }
+};
 
-    // ==================== STATS ====================
+const openHabitMenu = (habitId) => {
+    openHabitModal(habitId);
+};
 
-    // Update statistics
-    updateStats() {
-        let totalStreak = 0;
-        let longestStreak = 0;
-        let totalDays = 0;
-
-        this.data.habits.forEach(habit => {
-            const streak = this.calculateStreak(habit);
-            totalStreak += streak;
-            longestStreak = Math.max(longestStreak, this.calculateLongestStreak(habit));
-            totalDays += Object.values(habit.checkIns).filter(v => v === 'success').length;
-        });
-
-        document.getElementById('currentStreak').textContent = totalStreak;
-        document.getElementById('longestStreak').textContent = longestStreak;
-        document.getElementById('totalDays').textContent = totalDays;
-
-        const progress = this.calculateMonthlyProgress();
-        document.getElementById('progressPercent').textContent = `${progress}%`;
-
-        const circumference = 2 * Math.PI * 90;
-        const offset = circumference - (progress / 100) * circumference;
-        document.getElementById('progressRing').style.strokeDashoffset = offset;
+// ==================== CALENDAR ====================
+const renderCalendar = () => {
+    const year = APP_STATE.calendarYear;
+    const month = APP_STATE.calendarMonth;
+    const today = getToday();
+    
+    const monthNames = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 
+                        'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
+    
+    document.getElementById('calendar-title').textContent = `${monthNames[month]} ${year}`;
+    
+    const firstDay = new Date(year, month, 1).getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const adjustedFirstDay = firstDay === 0 ? 6 : firstDay - 1;
+    
+    const container = document.getElementById('calendar-days');
+    let html = '';
+    
+    // Empty cells
+    for (let i = 0; i < adjustedFirstDay; i++) {
+        html += '<div class="calendar-day empty"></div>';
     }
-
-    // Calculate longest streak for a habit
-    calculateLongestStreak(habit) {
-        const dates = Object.keys(habit.checkIns).sort();
-        let longest = 0;
-        let current = 0;
-
-        for (const date of dates) {
-            if (habit.checkIns[date] === 'success') {
-                current++;
-                longest = Math.max(longest, current);
-            } else {
-                current = 0;
-            }
-        }
-
-        return longest;
-    }
-
-    // Calculate monthly progress
-    calculateMonthlyProgress() {
-        if (this.data.habits.length === 0) return 0;
-
-        const now = new Date();
-        const year = now.getFullYear();
-        const month = now.getMonth();
-        const today = now.getDate();
+    
+    // Days
+    for (let day = 1; day <= daysInMonth; day++) {
+        const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        const log = APP_STATE.dailyLogs[dateStr];
+        const isToday = dateStr === today;
+        const isFuture = dateStr > today;
         
-        let totalPossible = this.data.habits.length * today;
-        let totalSuccess = 0;
-
-        for (let day = 1; day <= today; day++) {
-            const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-            this.data.habits.forEach(habit => {
-                if (habit.checkIns[dateStr] === 'success') {
-                    totalSuccess++;
-                }
-            });
+        let moodStyle = '';
+        let moodClass = '';
+        let indicator = '';
+        
+        if (log?.mood) {
+            moodStyle = `background: ${MOOD_COLORS[log.mood]};`;
+            moodClass = 'has-mood';
         }
         
-        return totalPossible > 0 ? Math.round((totalSuccess / totalPossible) * 100) : 0;
-    }
-
-    // ==================== CALENDAR ====================
-
-    // Render calendar
-    renderCalendar() {
-        const calendarDays = document.getElementById('calendarDays');
-        const calendarTitle = document.getElementById('calendarTitle');
-        
-        const months = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 
-                       'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
-        
-        calendarTitle.textContent = `${months[this.currentMonth]} ${this.currentYear}`;
-        
-        const firstDay = new Date(this.currentYear, this.currentMonth, 1);
-        const lastDay = new Date(this.currentYear, this.currentMonth + 1, 0);
-        const daysInMonth = lastDay.getDate();
-        
-        let startDay = firstDay.getDay() - 1;
-        if (startDay === -1) startDay = 6;
-        
-        const today = new Date();
-        const todayStr = this.getTodayString();
-        
-        let html = '';
-        
-        // Empty days
-        for (let i = 0; i < startDay; i++) {
-            html += '<div class="calendar-day empty"></div>';
+        if (log?.habits && Object.values(log.habits).some(v => v)) {
+            indicator = '<div class="day-indicator"></div>';
         }
         
-        // Days of month
-        for (let day = 1; day <= daysInMonth; day++) {
-            const dateStr = `${this.currentYear}-${String(this.currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-            const date = new Date(this.currentYear, this.currentMonth, day);
-            
-            let classes = ['calendar-day'];
-            let content = `<span class="day-number">${day}</span>`;
-            
-            if (dateStr === todayStr) {
-                classes.push('today');
-            }
-            
-            if (date > today) {
-                classes.push('future');
-            } else {
-                let successCount = 0;
-                let failCount = 0;
-                
-                this.data.habits.forEach(habit => {
-                    if (habit.checkIns[dateStr] === 'success') successCount++;
-                    else if (habit.checkIns[dateStr] === 'fail') failCount++;
-                });
+        html += `
+            <div class="calendar-day ${moodClass} ${isToday ? 'today' : ''} ${isFuture ? 'future' : ''}"
+                 style="${moodStyle}"
+                 onclick="${!isFuture ? `openDayModal('${dateStr}')` : ''}">
+                <span class="day-number">${day}</span>
+                ${indicator}
+            </div>
+        `;
+    }
+    
+    container.innerHTML = html;
+    renderNotes();
+};
 
-                if (this.data.habits.length > 0) {
-                    if (successCount === this.data.habits.length) {
-                        classes.push('success');
-                    } else if (successCount > 0 || failCount > 0) {
-                        classes.push('partial');
-                    }
-                }
+const prevMonth = () => {
+    APP_STATE.calendarMonth--;
+    if (APP_STATE.calendarMonth < 0) {
+        APP_STATE.calendarMonth = 11;
+        APP_STATE.calendarYear--;
+    }
+    renderCalendar();
+};
 
-                const mood = this.data.dailyMoods[dateStr];
-                if (mood) {
-                    content += `<span class="day-mood">${this.moodEmojis[mood]}</span>`;
-                }
-            }
-            
-            html += `<div class="${classes.join(' ')}" data-date="${dateStr}">${content}</div>`;
+const nextMonth = () => {
+    const today = new Date();
+    const maxMonth = today.getMonth();
+    const maxYear = today.getFullYear();
+    
+    if (APP_STATE.calendarYear < maxYear || 
+        (APP_STATE.calendarYear === maxYear && APP_STATE.calendarMonth < maxMonth)) {
+        APP_STATE.calendarMonth++;
+        if (APP_STATE.calendarMonth > 11) {
+            APP_STATE.calendarMonth = 0;
+            APP_STATE.calendarYear++;
         }
-        
-        calendarDays.innerHTML = html;
+        renderCalendar();
     }
+};
 
-    // Change month
-    changeMonth(delta) {
-        this.currentMonth += delta;
-        
-        if (this.currentMonth > 11) {
-            this.currentMonth = 0;
-            this.currentYear++;
-        } else if (this.currentMonth < 0) {
-            this.currentMonth = 11;
-            this.currentYear--;
-        }
-        
-        this.renderCalendar();
+const renderNotes = () => {
+    const container = document.getElementById('notes-list');
+    const notesWithDates = Object.entries(APP_STATE.dailyLogs)
+        .filter(([_, log]) => log.note && log.note.trim())
+        .sort((a, b) => b[0].localeCompare(a[0]))
+        .slice(0, 5);
+    
+    if (notesWithDates.length === 0) {
+        container.innerHTML = '<div class="no-notes">Henüz not eklemediniz</div>';
+        return;
     }
+    
+    container.innerHTML = notesWithDates.map(([date, log]) => `
+        <div class="note-item">
+            <div class="note-header">
+                <span class="note-date">${formatDate(date)}</span>
+                <span class="note-mood">${log.mood ? MOOD_EMOJIS[log.mood] : ''}</span>
+            </div>
+            <div class="note-text">${log.note}</div>
+        </div>
+    `).join('');
+};
 
-    // ==================== LOGS ====================
-
-    // Open log modal
-    openLogModal() {
-        document.getElementById('logModal').classList.add('active');
-        document.getElementById('logNote').value = '';
-        document.getElementById('logTriggers').value = '';
-        this.selectedMood = null;
-        document.querySelectorAll('#moodSelector .mood-btn').forEach(btn => btn.classList.remove('selected'));
-    }
-
-    // Close log modal
-    closeLogModal() {
-        document.getElementById('logModal').classList.remove('active');
-    }
-
-    // Select mood
-    selectMood(btn) {
-        document.querySelectorAll('#moodSelector .mood-btn').forEach(b => b.classList.remove('selected'));
-        btn.classList.add('selected');
-        this.selectedMood = parseInt(btn.dataset.mood);
-    }
-
-    // Save log
-    saveLog() {
-        const note = document.getElementById('logNote').value.trim();
-        const triggersInput = document.getElementById('logTriggers').value.trim();
-        const triggers = triggersInput ? triggersInput.split(',').map(t => t.trim()).filter(t => t) : [];
-
-        if (!note && !this.selectedMood) {
-            this.showToast('Lütfen bir not veya ruh hali seçin', 'error');
-            return;
-        }
-
-        const log = {
-            id: Date.now(),
-            date: this.getTodayString(),
-            mood: this.selectedMood,
-            note: note,
-            triggers: triggers
-        };
-
-        this.data.logs.unshift(log);
-        this.saveData();
-        this.renderLogs();
-        this.closeLogModal();
-        this.showToast('Not kaydedildi! 📝', 'success');
-    }
-
-    // Render logs
-    renderLogs() {
-        const logsList = document.getElementById('logsList');
-        
-        if (this.data.logs.length === 0) {
-            logsList.innerHTML = '<div class="no-logs">Henüz not yok. İlk notunu ekle!</div>';
-            return;
-        }
-        
-        const html = this.data.logs.slice(0, 10).map(log => {
-            const date = new Date(log.date);
-            const formattedDate = date.toLocaleDateString('tr-TR', { 
-                day: 'numeric', 
-                month: 'long', 
-                year: 'numeric' 
-            });
-            
-            const triggersHtml = log.triggers.length > 0 
-                ? `<div class="log-triggers">${log.triggers.map(t => `<span class="trigger-tag">${t}</span>`).join('')}</div>`
-                : '';
-            
+// ==================== DAY MODAL ====================
+const openDayModal = (dateStr) => {
+    APP_STATE.selectedDate = dateStr;
+    const modal = document.getElementById('day-modal');
+    const log = APP_STATE.dailyLogs[dateStr] || { habits: {}, mood: null, note: '' };
+    
+    document.getElementById('day-modal-title').textContent = formatDate(dateStr);
+    document.getElementById('day-modal-subtitle').textContent = getDayOfWeek(dateStr);
+    
+    // Mood
+    document.querySelectorAll('.modal-mood .mood-btn').forEach(btn => {
+        const mood = parseInt(btn.dataset.mood);
+        btn.classList.toggle('selected', mood === log.mood);
+    });
+    
+    // Habits
+    const habitsContainer = document.getElementById('day-habits-list');
+    if (APP_STATE.habits.length === 0) {
+        habitsContainer.innerHTML = '<div class="no-habits" style="padding: 10px;">Alışkanlık yok</div>';
+    } else {
+        habitsContainer.innerHTML = APP_STATE.habits.map(habit => {
+            const isChecked = log.habits?.[habit.id] || false;
             return `
-                <div class="log-item" data-id="${log.id}">
-                    <div class="log-header">
-                        <span class="log-date">${formattedDate}</span>
-                        <span class="log-mood">${log.mood ? this.moodEmojis[log.mood] : ''}</span>
-                    </div>
-                    ${log.note ? `<p class="log-note">${log.note}</p>` : ''}
-                    ${triggersHtml}
-                    <div class="log-actions">
-                        <button class="log-action-btn" onclick="app.deleteLog(${log.id})">🗑️ Sil</button>
-                    </div>
+                <div class="day-habit-item">
+                    <span class="habit-icon">${habit.icon}</span>
+                    <span class="habit-name">${habit.name}</span>
+                    <button class="day-habit-toggle ${isChecked ? 'checked' : ''}"
+                            onclick="toggleDayHabit('${habit.id}')"></button>
                 </div>
             `;
         }).join('');
-        
-        logsList.innerHTML = html;
     }
+    
+    // Note
+    document.getElementById('day-note').value = log.note || '';
+    
+    modal.classList.add('active');
+};
 
-    // Delete log
-    deleteLog(id) {
-        if (confirm('Bu notu silmek istediğine emin misin?')) {
-            this.data.logs = this.data.logs.filter(log => log.id !== id);
-            this.saveData();
-            this.renderLogs();
-            this.showToast('Not silindi', 'success');
+const closeDayModal = () => {
+    document.getElementById('day-modal').classList.remove('active');
+    APP_STATE.selectedDate = null;
+};
+
+const setDayMood = (mood) => {
+    if (!APP_STATE.selectedDate) return;
+    
+    if (!APP_STATE.dailyLogs[APP_STATE.selectedDate]) {
+        APP_STATE.dailyLogs[APP_STATE.selectedDate] = { habits: {}, mood: null, note: '' };
+    }
+    APP_STATE.dailyLogs[APP_STATE.selectedDate].mood = mood;
+    
+    document.querySelectorAll('.modal-mood .mood-btn').forEach(btn => {
+        btn.classList.toggle('selected', parseInt(btn.dataset.mood) === mood);
+    });
+    
+    saveData();
+    renderCalendar();
+    if (APP_STATE.selectedDate === getToday()) renderTodayMood();
+};
+
+const toggleDayHabit = (habitId) => {
+    if (!APP_STATE.selectedDate) return;
+    
+    if (!APP_STATE.dailyLogs[APP_STATE.selectedDate]) {
+        APP_STATE.dailyLogs[APP_STATE.selectedDate] = { habits: {}, mood: null, note: '' };
+    }
+    
+    const current = APP_STATE.dailyLogs[APP_STATE.selectedDate].habits[habitId] || false;
+    APP_STATE.dailyLogs[APP_STATE.selectedDate].habits[habitId] = !current;
+    
+    // Update toggle button
+    const btn = event.target;
+    btn.classList.toggle('checked');
+    
+    saveData();
+    renderCalendar();
+    if (APP_STATE.selectedDate === getToday()) {
+        renderHabits();
+        renderProgress();
+        renderStats();
+    }
+};
+
+const saveDayNote = () => {
+    if (!APP_STATE.selectedDate) return;
+    
+    const note = document.getElementById('day-note').value.trim();
+    
+    if (!APP_STATE.dailyLogs[APP_STATE.selectedDate]) {
+        APP_STATE.dailyLogs[APP_STATE.selectedDate] = { habits: {}, mood: null, note: '' };
+    }
+    APP_STATE.dailyLogs[APP_STATE.selectedDate].note = note;
+    
+    saveData();
+    renderNotes();
+    closeDayModal();
+    showToast('Kaydedildi', 'success');
+};
+
+// ==================== ANALYTICS ====================
+const renderAnalytics = () => {
+    renderMoodAnalytics();
+    renderHabitAnalytics();
+    renderWeeklyPattern();
+};
+
+const setAnalyticsPeriod = (period) => {
+    APP_STATE.analyticsPeriod = period;
+    document.querySelectorAll('.period-tab').forEach(tab => {
+        tab.classList.toggle('active', tab.dataset.period === period);
+    });
+    renderAnalytics();
+};
+
+const getDateRange = () => {
+    const today = new Date();
+    const dates = [];
+    const days = APP_STATE.analyticsPeriod === 'week' ? 7 : 30;
+    
+    for (let i = days - 1; i >= 0; i--) {
+        const d = new Date(today);
+        d.setDate(d.getDate() - i);
+        dates.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`);
+    }
+    
+    return dates;
+};
+
+const renderMoodAnalytics = () => {
+    const dates = getDateRange();
+    const container = document.getElementById('mood-chart');
+    const dayNames = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
+    
+    let html = '';
+    let totalMood = 0;
+    let moodCount = 0;
+    let moodDistribution = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+    
+    const displayDates = APP_STATE.analyticsPeriod === 'week' ? dates : dates.filter((_, i) => i % 4 === 0);
+    
+    displayDates.forEach(date => {
+        const log = APP_STATE.dailyLogs[date];
+        const mood = log?.mood || 0;
+        const height = mood > 0 ? (mood / 5) * 80 : 5;
+        const color = mood > 0 ? MOOD_COLORS[mood] : 'var(--border-color)';
+        const dayIndex = new Date(date).getDay();
+        const label = APP_STATE.analyticsPeriod === 'week' ? 
+            dayNames[dayIndex === 0 ? 6 : dayIndex - 1] : 
+            date.split('-')[2];
+        
+        if (mood > 0) {
+            totalMood += mood;
+            moodCount++;
+            moodDistribution[mood]++;
         }
-    }
-
-    // ==================== QUOTES ====================
-
-    showRandomQuote() {
-        const randomIndex = Math.floor(Math.random() * this.quotes.length);
-        document.getElementById('quoteText').textContent = `"${this.quotes[randomIndex]}"`;
-    }
-
-    // ==================== DATA MANAGEMENT ====================
-
-    exportData() {
-        const exportData = {
-            ...this.data,
-            exportDate: new Date().toISOString(),
-            appVersion: '2.0.0'
-        };
-
-        const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
         
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `chain-breaker-backup-${this.getTodayString()}.json`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-        
-        this.showToast('Veriler dışa aktarıldı! 📤', 'success');
-    }
+        html += `
+            <div class="chart-bar">
+                <span class="bar-value">${mood > 0 ? MOOD_EMOJIS[mood] : '-'}</span>
+                <div class="bar-fill" style="height: ${height}px; background: ${color};"></div>
+                <span class="bar-label">${label}</span>
+            </div>
+        `;
+    });
+    
+    container.innerHTML = html;
+    
+    // Summary
+    const avgMood = moodCount > 0 ? (totalMood / moodCount).toFixed(1) : '-';
+    const mostCommon = Object.entries(moodDistribution).sort((a, b) => b[1] - a[1])[0];
+    
+    document.getElementById('avg-mood').textContent = avgMood;
+    document.getElementById('common-mood').textContent = mostCommon[1] > 0 ? MOOD_EMOJIS[mostCommon[0]] : '-';
+    document.getElementById('logged-days').textContent = moodCount;
+    document.getElementById('mood-trend').textContent = calculateMoodTrend(dates);
+};
 
-    importData(event) {
-        const file = event.target.files[0];
+const calculateMoodTrend = (dates) => {
+    const halfPoint = Math.floor(dates.length / 2);
+    const firstHalf = dates.slice(0, halfPoint);
+    const secondHalf = dates.slice(halfPoint);
+    
+    const firstAvg = getAvgMood(firstHalf);
+    const secondAvg = getAvgMood(secondHalf);
+    
+    if (firstAvg === 0 || secondAvg === 0) return '-';
+    if (secondAvg > firstAvg) return '📈';
+    if (secondAvg < firstAvg) return '📉';
+    return '➡️';
+};
+
+const getAvgMood = (dates) => {
+    let total = 0, count = 0;
+    dates.forEach(date => {
+        const mood = APP_STATE.dailyLogs[date]?.mood;
+        if (mood) { total += mood; count++; }
+    });
+    return count > 0 ? total / count : 0;
+};
+
+const renderHabitAnalytics = () => {
+    const dates = getDateRange();
+    const container = document.getElementById('habit-analytics');
+    
+    if (APP_STATE.habits.length === 0) {
+        container.innerHTML = '<div class="no-habits" style="padding: 20px;">Alışkanlık ekleyin</div>';
+        return;
+    }
+    
+    container.innerHTML = APP_STATE.habits.map(habit => {
+        let completed = 0;
+        dates.forEach(date => {
+            if (APP_STATE.dailyLogs[date]?.habits?.[habit.id]) completed++;
+        });
+        const percent = Math.round((completed / dates.length) * 100);
+        
+        return `
+            <div class="habit-stat">
+                <span class="habit-stat-icon">${habit.icon}</span>
+                <div class="habit-stat-info">
+                    <div class="habit-stat-name">${habit.name}</div>
+                    <div class="habit-stat-bar">
+                        <div class="habit-stat-fill" style="width: ${percent}%; background: ${habit.color};"></div>
+                    </div>
+                </div>
+                <span class="habit-stat-percent">${percent}%</span>
+            </div>
+        `;
+    }).join('');
+};
+
+const renderWeeklyPattern = () => {
+    const container = document.getElementById('weekly-pattern');
+    const dayNames = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
+    const dayStats = [0, 0, 0, 0, 0, 0, 0];
+    const dayCounts = [0, 0, 0, 0, 0, 0, 0];
+    
+    Object.entries(APP_STATE.dailyLogs).forEach(([date, log]) => {
+        const dayIndex = new Date(date).getDay();
+        const adjustedIndex = dayIndex === 0 ? 6 : dayIndex - 1;
+        
+        const completedHabits = APP_STATE.habits.filter(h => log.habits?.[h.id]).length;
+        if (APP_STATE.habits.length > 0) {
+            dayStats[adjustedIndex] += (completedHabits / APP_STATE.habits.length) * 100;
+            dayCounts[adjustedIndex]++;
+        }
+    });
+    
+    container.innerHTML = dayNames.map((name, i) => {
+        const avg = dayCounts[i] > 0 ? Math.round(dayStats[i] / dayCounts[i]) : 0;
+        const hue = (avg / 100) * 120;
+        
+        return `
+            <div class="day-pattern">
+                <div class="day-pattern-label">${name}</div>
+                <div class="day-pattern-value" style="background: hsl(${hue}, 70%, 45%);">
+                    ${avg}%
+                </div>
+            </div>
+        `;
+    }).join('');
+};
+
+// ==================== SETTINGS ====================
+const renderSettings = () => {
+    document.querySelectorAll('.theme-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.theme === APP_STATE.settings.theme);
+    });
+};
+
+const setTheme = (theme) => {
+    APP_STATE.settings.theme = theme;
+    document.documentElement.setAttribute('data-theme', theme);
+    saveData();
+    renderSettings();
+};
+
+const exportData = () => {
+    const data = {
+        habits: APP_STATE.habits,
+        dailyLogs: APP_STATE.dailyLogs,
+        settings: APP_STATE.settings,
+        exportDate: new Date().toISOString(),
+        version: '2.0'
+    };
+    
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `chainbreaker-backup-${getToday()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    
+    showToast('Veriler dışa aktarıldı', 'success');
+};
+
+const importData = () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    
+    input.onchange = (e) => {
+        const file = e.target.files[0];
         if (!file) return;
-
+        
         const reader = new FileReader();
-        reader.onload = (e) => {
+        reader.onload = (event) => {
             try {
-                const importedData = JSON.parse(e.target.result);
+                const data = JSON.parse(event.target.result);
                 
-                if (!importedData.habits && !importedData.checkIns) {
-                    throw new Error('Geçersiz veri formatı');
+                if (data.habits) APP_STATE.habits = data.habits;
+                if (data.dailyLogs) APP_STATE.dailyLogs = data.dailyLogs;
+                if (data.settings) {
+                    APP_STATE.settings = data.settings;
+                    setTheme(APP_STATE.settings.theme);
                 }
-
-                // Migration for old format
-                if (importedData.checkIns && !importedData.habits) {
-                    importedData.habits = [{
-                        id: 1,
-                        name: 'Alışkanlık',
-                        icon: '⛓️',
-                        color: '#e94560',
-                        checkIns: importedData.checkIns
-                    }];
-                    importedData.dailyMoods = {};
-                }
-
-                if (confirm('Mevcut verilerinizi değiştirmek mi yoksa birleştirmek mi istiyorsunuz?\n\nTamam = Değiştir\nİptal = Birleştir')) {
-                    this.data = {
-                        habits: importedData.habits || [],
-                        dailyMoods: importedData.dailyMoods || {},
-                        logs: importedData.logs || [],
-                        settings: importedData.settings || this.data.settings
-                    };
-                } else {
-                    importedData.habits?.forEach(importedHabit => {
-                        const existing = this.data.habits.find(h => h.name === importedHabit.name);
-                        if (existing) {
-                            existing.checkIns = { ...existing.checkIns, ...importedHabit.checkIns };
-                        } else {
-                            this.data.habits.push(importedHabit);
-                        }
-                    });
-                    
-                    this.data.dailyMoods = { ...this.data.dailyMoods, ...importedData.dailyMoods };
-                    
-                    this.data.logs = [...importedData.logs || [], ...this.data.logs];
-                    const seen = new Set();
-                    this.data.logs = this.data.logs.filter(log => {
-                        if (seen.has(log.id)) return false;
-                        seen.add(log.id);
-                        return true;
-                    });
-                }
-
-                this.saveData();
-                this.renderHabits();
-                this.renderDailyMood();
-                this.updateStats();
-                this.renderCalendar();
-                this.renderLogs();
-                this.showToast('Veriler içe aktarıldı! 📥', 'success');
-            } catch (error) {
-                console.error('Import error:', error);
-                this.showToast('Veri içe aktarılamadı: ' + error.message, 'error');
+                
+                saveData();
+                renderHome();
+                showToast('Veriler içe aktarıldı', 'success');
+            } catch (err) {
+                showToast('Dosya okunamadı', 'error');
             }
         };
         reader.readAsText(file);
-        event.target.value = '';
-    }
+    };
+    
+    input.click();
+};
 
-    // ==================== UTILITIES ====================
-
-    showToast(message, type = 'success') {
-        const toast = document.getElementById('toast');
-        toast.textContent = message;
-        toast.className = `toast ${type} show`;
-        
-        setTimeout(() => {
-            toast.classList.remove('show');
-        }, 3000);
-    }
-
-    async registerServiceWorker() {
-        if ('serviceWorker' in navigator) {
-            try {
-                const registration = await navigator.serviceWorker.register('./sw.js');
-                console.log('Service Worker registered:', registration);
-            } catch (error) {
-                console.error('Service Worker registration failed:', error);
-            }
+const deleteAllData = () => {
+    if (confirm('Tüm verileri silmek istediğinize emin misiniz? Bu işlem geri alınamaz!')) {
+        if (confirm('Son onay: Tüm alışkanlıklar ve loglar silinecek.')) {
+            APP_STATE.habits = [];
+            APP_STATE.dailyLogs = {};
+            saveData();
+            renderHome();
+            showToast('Tüm veriler silindi', 'success');
         }
     }
-}
+};
 
-// Initialize app
-let app;
-document.addEventListener('DOMContentLoaded', () => {
-    app = new ChainBreakerApp();
-});
-
-// Add gradient definition for progress ring
-document.addEventListener('DOMContentLoaded', () => {
-    const svg = document.querySelector('.progress-ring');
-    if (svg) {
-        const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
-        const gradient = document.createElementNS('http://www.w3.org/2000/svg', 'linearGradient');
-        gradient.setAttribute('id', 'gradient');
-        gradient.innerHTML = `
-            <stop offset="0%" stop-color="#00d9a5"/>
-            <stop offset="100%" stop-color="#00b894"/>
-        `;
-        defs.appendChild(gradient);
-        svg.insertBefore(defs, svg.firstChild);
+// ==================== INITIALIZATION ====================
+const initApp = () => {
+    loadData();
+    
+    // Apply theme
+    document.documentElement.setAttribute('data-theme', APP_STATE.settings.theme);
+    
+    // Setup navigation
+    document.querySelectorAll('.nav-item').forEach(item => {
+        item.addEventListener('click', () => switchPage(item.dataset.page));
+    });
+    
+    // Setup mood buttons (home)
+    document.querySelectorAll('.mood-card .mood-btn').forEach(btn => {
+        btn.addEventListener('click', () => setMood(parseInt(btn.dataset.mood)));
+    });
+    
+    // Setup modal mood buttons
+    document.querySelectorAll('.modal-mood .mood-btn').forEach(btn => {
+        btn.addEventListener('click', () => setDayMood(parseInt(btn.dataset.mood)));
+    });
+    
+    // Setup icon/color selection
+    document.querySelectorAll('.icon-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.icon-btn').forEach(b => b.classList.remove('selected'));
+            btn.classList.add('selected');
+        });
+    });
+    
+    document.querySelectorAll('.color-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.color-btn').forEach(b => b.classList.remove('selected'));
+            btn.classList.add('selected');
+        });
+    });
+    
+    // Setup period tabs
+    document.querySelectorAll('.period-tab').forEach(tab => {
+        tab.addEventListener('click', () => setAnalyticsPeriod(tab.dataset.period));
+    });
+    
+    // Setup theme buttons
+    document.querySelectorAll('.theme-btn').forEach(btn => {
+        btn.addEventListener('click', () => setTheme(btn.dataset.theme));
+    });
+    
+    // Close modals on backdrop click
+    document.querySelectorAll('.modal').forEach(modal => {
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                modal.classList.remove('active');
+            }
+        });
+    });
+    
+    // Render initial page
+    renderHome();
+    
+    // Register service worker
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('./sw.js')
+            .then(() => console.log('SW registered'))
+            .catch(err => console.log('SW error:', err));
     }
-});
+};
+
+// Start app
+document.addEventListener('DOMContentLoaded', initApp);
