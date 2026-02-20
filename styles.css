@@ -112,8 +112,15 @@ body {
 }
 
 @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 .page-content {
@@ -285,11 +292,25 @@ body {
     box-shadow: 0 0 20px rgba(99, 102, 241, 0.4);
 }
 
-.mood-btn[data-mood="1"].selected { border-color: #ef4444; }
-.mood-btn[data-mood="2"].selected { border-color: #f97316; }
-.mood-btn[data-mood="3"].selected { border-color: #eab308; }
-.mood-btn[data-mood="4"].selected { border-color: #22c55e; }
-.mood-btn[data-mood="5"].selected { border-color: #10b981; }
+.mood-btn[data-mood="1"].selected {
+    border-color: #ef4444;
+}
+
+.mood-btn[data-mood="2"].selected {
+    border-color: #f97316;
+}
+
+.mood-btn[data-mood="3"].selected {
+    border-color: #eab308;
+}
+
+.mood-btn[data-mood="4"].selected {
+    border-color: #22c55e;
+}
+
+.mood-btn[data-mood="5"].selected {
+    border-color: #10b981;
+}
 
 /* ==================== HABITS ==================== */
 .add-btn {
@@ -441,10 +462,11 @@ body {
     cursor: pointer;
     transition: background 0.2s;
 }
+
 .calendar-nav .today-btn:hover {
     background: #6366f1;
 }
-}
+
 
 .calendar-title {
     font-size: 1rem;
@@ -536,6 +558,15 @@ body {
     border-radius: 50%;
     background: var(--success);
     margin-top: 2px;
+}
+
+.calendar-day .day-note-indicator {
+    position: absolute;
+    top: 2px;
+    right: 3px;
+    font-size: 0.5rem;
+    line-height: 1;
+    opacity: 0.85;
 }
 
 .mood-legend {
@@ -880,11 +911,25 @@ body {
     z-index: 10;
 }
 
-.heatmap-cell.level-0 { background: var(--bg-input); }
-.heatmap-cell.level-1 { background: #1e3a2f; }
-.heatmap-cell.level-2 { background: #065f46; }
-.heatmap-cell.level-3 { background: #059669; }
-.heatmap-cell.level-4 { background: #10b981; }
+.heatmap-cell.level-0 {
+    background: var(--bg-input);
+}
+
+.heatmap-cell.level-1 {
+    background: #1e3a2f;
+}
+
+.heatmap-cell.level-2 {
+    background: #065f46;
+}
+
+.heatmap-cell.level-3 {
+    background: #059669;
+}
+
+.heatmap-cell.level-4 {
+    background: #10b981;
+}
 
 .heatmap-legend {
     display: flex;
@@ -1095,8 +1140,13 @@ body {
 }
 
 @keyframes slideUp {
-    from { transform: translateY(100%); }
-    to { transform: translateY(0); }
+    from {
+        transform: translateY(100%);
+    }
+
+    to {
+        transform: translateY(0);
+    }
 }
 
 .modal-header {
