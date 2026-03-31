@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="tr">
+<html lang="tr" data-theme="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <meta name="theme-color" content="#0f0f1a">
+    <meta name="theme-color" content="#090b14">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="description" content="Chain Breaker - Alışkanlık Takip Uygulaması">
@@ -17,8 +17,8 @@
     <svg class="svg-defs">
         <defs>
             <linearGradient id="progressGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stop-color="#6366f1" />
-                <stop offset="100%" stop-color="#8b5cf6" />
+                <stop offset="0%" stop-color="#7c6aff" />
+                <stop offset="100%" stop-color="#22d3a5" />
             </linearGradient>
         </defs>
     </svg>
@@ -26,10 +26,8 @@
     <div class="app">
         <!-- Header -->
         <header class="app-header">
-            <div class="header-logo">
-                <span class="logo-icon">⛓️</span>
-                <span class="logo-text">Chain Breaker</span>
-            </div>
+            <span class="logo-icon">⛓️</span>
+            <span class="logo-text">Chain Breaker</span>
         </header>
 
         <!-- Pages Container -->
@@ -39,13 +37,23 @@
                 <div class="page-content">
                     <!-- Quote Card -->
                     <section class="quote-card">
-                        <h3 class="card-title">💫 Günün Sözü</h3>
-                        <button class="refresh-btn" onclick="refreshQuote()">🔄</button>
                         <p class="quote-text" id="quote-text"></p>
+                        <button class="refresh-btn" onclick="refreshQuote()">🔄</button>
                     </section>
 
+                    <!-- XP Banner (hidden until Phase 4) -->
+                    <div id="xp-banner" class="xp-banner card" style="display:none">
+                        <div class="xp-top">
+                            <span class="xp-level-name">Disiplinli · Seviye 3</span>
+                            <span class="xp-points">340 / 500 XP</span>
+                        </div>
+                        <div class="xp-bar-bg">
+                            <div class="xp-bar-fill" id="xp-bar-fill"></div>
+                        </div>
+                    </div>
+
                     <!-- Today Progress Card -->
-                    <section class="today-card">
+                    <section class="today-card card">
                         <h2 class="section-title" id="today-date">Bugün</h2>
                         <div class="today-content">
                             <div class="progress-ring-wrapper">
@@ -60,21 +68,21 @@
                             </div>
                             <div class="stats-list">
                                 <div class="stat-item">
-                                    <span class="stat-value" id="daily-streak">0</span>
                                     <span class="stat-label">Günlük Seri 🔥</span>
+                                    <span class="stat-value" id="daily-streak">0</span>
                                 </div>
                                 <div class="stat-item">
-                                    <span class="stat-value" id="monthly-streak">0</span>
                                     <span class="stat-label">Bu Ay ✅</span>
+                                    <span class="stat-value" id="monthly-streak">0</span>
                                 </div>
                             </div>
                         </div>
                     </section>
 
                     <!-- Habits Card -->
-                    <section class="habits-card">
+                    <section class="habits-card card">
                         <div class="card-header">
-                            <h3 class="card-title">Alışkanlıklar</h3>
+                            <h3 class="card-title">⚡ Alışkanlıklar</h3>
                             <button class="add-btn" onclick="openHabitModal()">+</button>
                         </div>
                         <div class="habits-list" id="habits-list">
@@ -83,9 +91,9 @@
                     </section>
 
                     <!-- Mood Card -->
-                    <section class="mood-card">
-                        <h3 class="card-title">Bugün nasıl hissediyorsun?</h3>
-                        <p class="mood-subtitle">Günlük duygu durumunu kaydet</p>
+                    <section class="mood-card card">
+                        <h3 class="card-title mood-section-title">😶 Bugün nasıl hissediyorsun?</h3>
+                        <p class="mood-section-sub">Günlük duygu durumunu kaydet</p>
                         <div class="mood-buttons">
                             <button class="mood-btn" data-mood="1">😢</button>
                             <button class="mood-btn" data-mood="2">😕</button>
@@ -94,6 +102,11 @@
                             <button class="mood-btn" data-mood="5">😄</button>
                         </div>
                     </section>
+
+                    <!-- Forge Widget -->
+                    <div id="forge-widget-container"></div>
+                    <!-- XP Banner Container (rendered by JS) -->
+                    <div id="xp-banner-container"></div>
                 </div>
             </div>
 
@@ -102,33 +115,31 @@
                 <div class="page-content">
                     <section class="calendar-card">
                         <div class="calendar-nav">
-                            <button class="nav-btn" onclick="prevMonth()">‹</button>
+                            <button class="cal-nav-btn" onclick="prevMonth()">‹</button>
                             <h3 class="calendar-title" id="calendar-title">Ocak 2024</h3>
-                            <button class="nav-btn" onclick="nextMonth()">›</button>
-                            <button class="nav-btn today-btn" onclick="todayMonth()">Bugün</button>
+                            <button class="cal-nav-btn" onclick="nextMonth()">›</button>
+                            <button class="today-btn" onclick="todayMonth()">Bugün</button>
                         </div>
-                        <div class="calendar-weekdays">
-                            <span>Pzt</span>
-                            <span>Sal</span>
-                            <span>Çar</span>
-                            <span>Per</span>
-                            <span>Cum</span>
-                            <span>Cmt</span>
-                            <span>Paz</span>
+                        <div class="calendar-grid">
+                            <span class="cal-dow">Pzt</span>
+                            <span class="cal-dow">Sal</span>
+                            <span class="cal-dow">Çar</span>
+                            <span class="cal-dow">Per</span>
+                            <span class="cal-dow">Cum</span>
+                            <span class="cal-dow">Cmt</span>
+                            <span class="cal-dow">Paz</span>
                         </div>
                         <div class="calendar-days" id="calendar-days">
                             <!-- Calendar days will be rendered here -->
                         </div>
-                        <div class="mood-legend">
-                            <span><i style="background: #ef4444;"></i> Kötü</span>
-                            <span><i style="background: #f97316;"></i> Düşük</span>
-                            <span><i style="background: #eab308;"></i> Normal</span>
-                            <span><i style="background: #22c55e;"></i> İyi</span>
-                            <span><i style="background: #10b981;"></i> Harika</span>
+                        <div class="calendar-legend">
+                            <div class="legend-item"><i class="legend-dot" style="background:#ef4444"></i> Kötü</div>
+                            <div class="legend-item"><i class="legend-dot" style="background:#f97316"></i> Düşük</div>
+                            <div class="legend-item"><i class="legend-dot" style="background:#eab308"></i> Normal</div>
+                            <div class="legend-item"><i class="legend-dot" style="background:#22c55e"></i> İyi</div>
+                            <div class="legend-item"><i class="legend-dot" style="background:#22d3a5"></i> Harika</div>
                         </div>
                     </section>
-
-
                 </div>
             </div>
 
@@ -136,8 +147,8 @@
             <div id="analytics-page" class="page">
                 <div class="page-content">
                     <!-- Haftanın Günlerine Göre Mood -->
-                    <section class="analytics-card">
-                        <h3 class="card-title">😊 Haftanın Günlerine Göre Ruh Hali</h3>
+                    <section class="analytics-card card">
+                        <h3 class="card-title">😊 Günlere Göre Ruh Hali</h3>
                         <p class="card-subtitle">Hangi günler daha iyi hissediyorsun?</p>
                         <div class="weekday-mood-grid" id="weekday-mood-grid">
                             <!-- Weekday mood will be rendered here -->
@@ -145,8 +156,8 @@
                     </section>
 
                     <!-- Haftanın Günlerine Göre Alışkanlıklar -->
-                    <section class="analytics-card">
-                        <h3 class="card-title">🎯 Haftanın Günlerine Göre Alışkanlıklar</h3>
+                    <section class="analytics-card card">
+                        <h3 class="card-title">🎯 Günlere Göre Alışkanlıklar</h3>
                         <p class="card-subtitle">Hangi günler daha verimlisin?</p>
                         <div class="weekday-habits-grid" id="weekday-habits-grid">
                             <!-- Weekday habits will be rendered here -->
@@ -154,7 +165,7 @@
                     </section>
 
                     <!-- Alışkanlık Detayları -->
-                    <section class="analytics-card">
+                    <section class="analytics-card card">
                         <h3 class="card-title">📈 Alışkanlık Başarı Oranları</h3>
                         <p class="card-subtitle">Tüm zamanlar</p>
                         <div class="habit-analytics" id="habit-analytics">
@@ -163,9 +174,9 @@
                     </section>
 
                     <!-- Genel İstatistikler -->
-                    <section class="analytics-card">
+                    <section class="analytics-card card">
                         <h3 class="card-title">📊 Genel İstatistikler</h3>
-                        <div class="overall-stats">
+                        <div class="overall-stats" style="margin-top:10px">
                             <div class="overall-stat">
                                 <span class="overall-value" id="total-logged-days">0</span>
                                 <span class="overall-label">Toplam Kayıt</span>
@@ -186,7 +197,7 @@
                     </section>
 
                     <!-- Son 4 Ayın Özeti - Isı Haritası -->
-                    <section class="analytics-card">
+                    <section class="analytics-card card">
                         <h3 class="card-title">🗓️ Son 4 Ayın Özeti</h3>
                         <p class="card-subtitle">Her kare bir günü temsil eder</p>
                         <div class="heatmap-wrapper">
@@ -206,78 +217,105 @@
                         <div class="heatmap-legend">
                             <span>Az</span>
                             <div class="heatmap-legend-colors">
-                                <span style="background: var(--bg-input);"></span>
-                                <span style="background: #374151;"></span>
-                                <span style="background: #065f46;"></span>
-                                <span style="background: #059669;"></span>
-                                <span style="background: #10b981;"></span>
+                                <span style="background: var(--card2);"></span>
+                                <span style="background: rgba(34,211,165,0.2);"></span>
+                                <span style="background: rgba(34,211,165,0.45);"></span>
+                                <span style="background: rgba(34,211,165,0.7);"></span>
+                                <span style="background: #22d3a5;"></span>
                             </div>
                             <span>Çok</span>
                         </div>
-                        </div>
+                    </section>
+
+                    <!-- Forge Analytics -->
+                    <section class="analytics-card card">
+                        <h3 class="card-title">⚔️ Forge İlerlemesi</h3>
+                        <div id="forge-analytics"></div>
+                    </section>
+
+                    <!-- Alışkanlık × Ruh Hali Korelasyonu -->
+                    <section class="analytics-card card">
+                        <h3 class="card-title">📈 Alışkanlık × Ruh Hali İlişkisi</h3>
+                        <p class="card-subtitle">Son 30 günde alışkanlık oranın ruh halini nasıl etkiliyor?</p>
+                        <div id="correlation-section"></div>
                     </section>
                 </div>
+            </div>
+
+            <!-- FORGE PAGE -->
+            <div id="forge-page" class="page">
+                <!-- Content rendered by renderForge() -->
             </div>
 
             <!-- SETTINGS PAGE -->
             <div id="settings-page" class="page">
                 <div class="page-content">
-                    <section class="settings-card">
-                        <h3 class="card-title">⚙️ Ayarlar</h3>
-                        
-                        <div class="setting-item">
-                            <div class="setting-info">
-                                <span class="setting-label">Tema</span>
-                                <span class="setting-desc">Koyu veya açık mod</span>
+                    <section class="settings-section">
+                        <div class="setting-row">
+                            <div class="setting-left">
+                                <div class="setting-icon" style="background:var(--accent-bg)">🌓</div>
+                                <div>
+                                    <div class="setting-title">Tema</div>
+                                    <div class="setting-desc">Koyu veya açık mod</div>
+                                </div>
                             </div>
                             <div class="theme-toggle">
                                 <button class="theme-btn" data-theme="dark">🌙</button>
                                 <button class="theme-btn" data-theme="light">☀️</button>
                             </div>
                         </div>
-
-                        <div class="setting-item">
-                            <div class="setting-info">
-                                <span class="setting-label">Verileri Dışa Aktar</span>
-                                <span class="setting-desc">Yedek dosyası oluştur</span>
+                        <div class="setting-row">
+                            <div class="setting-left">
+                                <div class="setting-icon" style="background:var(--green-bg)">📤</div>
+                                <div>
+                                    <div class="setting-title">Verileri Dışa Aktar</div>
+                                    <div class="setting-desc">Yedek dosyası oluştur</div>
+                                </div>
                             </div>
                             <button class="setting-btn export" onclick="exportData()">Dışa Aktar</button>
                         </div>
-
-                        <div class="setting-item">
-                            <div class="setting-info">
-                                <span class="setting-label">Verileri İçe Aktar</span>
-                                <span class="setting-desc">Yedekten geri yükle</span>
+                        <div class="setting-row">
+                            <div class="setting-left">
+                                <div class="setting-icon" style="background:var(--accent-bg)">📥</div>
+                                <div>
+                                    <div class="setting-title">Verileri İçe Aktar</div>
+                                    <div class="setting-desc">Yedekten geri yükle</div>
+                                </div>
                             </div>
                             <button class="setting-btn import" onclick="importData()">İçe Aktar</button>
                         </div>
-
-                        <div class="setting-item">
-                            <div class="setting-info">
-                                <span class="setting-label">🧪 Test Verisi Oluştur</span>
-                                <span class="setting-label">Analytics'i test etmek için örnek veri</span>
+                        <div class="setting-row">
+                            <div class="setting-left">
+                                <div class="setting-icon" style="background:var(--amber-bg)">🧪</div>
+                                <div>
+                                    <div class="setting-title">Test Verisi Oluştur</div>
+                                    <div class="setting-desc">Analytics'i test etmek için</div>
+                                </div>
                             </div>
                             <button class="setting-btn" onclick="generateTestData()">Oluştur</button>
                         </div>
-
-                        <div class="setting-item danger">
-                            <div class="setting-info">
-                                <span class="setting-label">Tüm Verileri Sil</span>
-                                <span class="setting-desc">Dikkat: Bu işlem geri alınamaz</span>
+                        <div class="setting-row">
+                            <div class="setting-left">
+                                <div class="setting-icon" style="background:var(--red-bg)">🗑️</div>
+                                <div>
+                                    <div class="setting-title" style="color:var(--red)">Tüm Verileri Sil</div>
+                                    <div class="setting-desc">Dikkat: Geri alınamaz</div>
+                                </div>
                             </div>
                             <button class="setting-btn delete" onclick="deleteAllData()">Sil</button>
                         </div>
                     </section>
 
-                    <section class="settings-card">
-                        <h3 class="card-title">📱 Hakkında</h3>
-                        <p class="about-text">
-                            Chain Breaker v2.0<br>
-                            Alışkanlık takip uygulaması<br><br>
-                            Günlük rutinlerini takip et,<br>
-                            duygu durumunu kaydet,<br>
-                            zinciri kırma! ⛓️
-                        </p>
+                    <section class="settings-section">
+                        <div class="setting-row" style="border-bottom:none">
+                            <div class="setting-left">
+                                <div class="setting-icon" style="background:var(--accent-bg)">📱</div>
+                                <div>
+                                    <div class="setting-title">Chain Breaker v2.0</div>
+                                    <div class="setting-desc">Alışkanlık takip uygulaması · Zinciri kırma! ⛓️</div>
+                                </div>
+                            </div>
+                        </div>
                     </section>
                 </div>
             </div>
@@ -297,6 +335,10 @@
                 <span class="nav-icon">📊</span>
                 <span class="nav-label">Analiz</span>
             </button>
+            <button class="nav-item" data-page="forge">
+                <span class="nav-icon">⚔️</span>
+                <span class="nav-label">Görev</span>
+            </button>
             <button class="nav-item" data-page="settings">
                 <span class="nav-icon">⚙️</span>
                 <span class="nav-label">Ayarlar</span>
@@ -307,6 +349,7 @@
     <!-- HABIT MODAL -->
     <div id="habit-modal" class="modal">
         <div class="modal-content">
+            <div class="modal-handle"></div>
             <div class="modal-header">
                 <h3 id="habit-modal-title">Yeni Alışkanlık</h3>
                 <button class="close-btn" onclick="closeHabitModal()">✕</button>
@@ -339,17 +382,17 @@
                 <div class="form-group">
                     <label>Renk Seç</label>
                     <div class="color-grid">
-                        <button type="button" class="color-btn selected" data-color="#6366f1" style="background: #6366f1;"></button>
-                        <button type="button" class="color-btn" data-color="#8b5cf6" style="background: #8b5cf6;"></button>
-                        <button type="button" class="color-btn" data-color="#ec4899" style="background: #ec4899;"></button>
-                        <button type="button" class="color-btn" data-color="#ef4444" style="background: #ef4444;"></button>
-                        <button type="button" class="color-btn" data-color="#f97316" style="background: #f97316;"></button>
-                        <button type="button" class="color-btn" data-color="#eab308" style="background: #eab308;"></button>
-                        <button type="button" class="color-btn" data-color="#22c55e" style="background: #22c55e;"></button>
-                        <button type="button" class="color-btn" data-color="#10b981" style="background: #10b981;"></button>
-                        <button type="button" class="color-btn" data-color="#14b8a6" style="background: #14b8a6;"></button>
-                        <button type="button" class="color-btn" data-color="#06b6d4" style="background: #06b6d4;"></button>
-                        <button type="button" class="color-btn" data-color="#3b82f6" style="background: #3b82f6;"></button>
+                        <button type="button" class="color-btn selected" data-color="#7c6aff" style="background:#7c6aff"></button>
+                        <button type="button" class="color-btn" data-color="#a78bfa" style="background:#a78bfa"></button>
+                        <button type="button" class="color-btn" data-color="#ec4899" style="background:#ec4899"></button>
+                        <button type="button" class="color-btn" data-color="#f87171" style="background:#f87171"></button>
+                        <button type="button" class="color-btn" data-color="#ff6b2b" style="background:#ff6b2b"></button>
+                        <button type="button" class="color-btn" data-color="#f59e0b" style="background:#f59e0b"></button>
+                        <button type="button" class="color-btn" data-color="#22d3a5" style="background:#22d3a5"></button>
+                        <button type="button" class="color-btn" data-color="#10b981" style="background:#10b981"></button>
+                        <button type="button" class="color-btn" data-color="#06b6d4" style="background:#06b6d4"></button>
+                        <button type="button" class="color-btn" data-color="#3b82f6" style="background:#3b82f6"></button>
+                        <button type="button" class="color-btn" data-color="#8b5cf6" style="background:#8b5cf6"></button>
                     </div>
                 </div>
             </div>
@@ -357,8 +400,8 @@
                 <button class="btn secondary" onclick="closeHabitModal()">İptal</button>
                 <button class="btn primary" onclick="saveHabit()">Kaydet</button>
             </div>
-            <div class="modal-footer" id="delete-habit-btn" style="display: none; border-top: none; padding-top: 0;">
-                <button class="btn" style="background: var(--danger); color: white;" onclick="deleteHabit()">Alışkanlığı Sil</button>
+            <div class="modal-footer" id="delete-habit-btn" style="display:none; border-top:none; padding-top:0; margin-top:0">
+                <button class="btn danger" onclick="deleteHabit()">Alışkanlığı Sil</button>
             </div>
         </div>
     </div>
@@ -366,10 +409,11 @@
     <!-- DAY DETAIL MODAL -->
     <div id="day-modal" class="modal">
         <div class="modal-content">
+            <div class="modal-handle"></div>
             <div class="modal-header">
                 <div>
                     <h3 id="day-modal-title">1 Ocak 2024</h3>
-                    <span id="day-modal-subtitle" style="font-size: 0.85rem; color: var(--text-muted);">Pazartesi</span>
+                    <span id="day-modal-subtitle" style="font-size:0.75rem; color:var(--text2)">Pazartesi</span>
                 </div>
                 <button class="close-btn" onclick="closeDayModal()">✕</button>
             </div>
@@ -399,6 +443,19 @@
                 <button class="btn secondary" onclick="closeDayModal()">Kapat</button>
                 <button class="btn primary" onclick="saveDayNote()">Kaydet</button>
             </div>
+        </div>
+    </div>
+
+    <!-- FORGE MODAL -->
+    <div id="forge-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-handle"></div>
+            <div class="modal-header">
+                <h3 id="forge-modal-title"></h3>
+                <button class="close-btn" onclick="closeForgeModal()">✕</button>
+            </div>
+            <div class="modal-body" id="forge-modal-body"></div>
+            <div class="modal-footer" id="forge-modal-footer"></div>
         </div>
     </div>
 

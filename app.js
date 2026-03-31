@@ -17,7 +17,11 @@ const APP_STATE = {
     calendarYear: new Date().getFullYear(),
     editingHabit: null,
     selectedDate: null,
-    analyticsPeriod: 'week'
+    analyticsPeriod: 'week',
+    forgeData: {},
+    forgeSubTab: 'active',
+    forgeExpandedId: null,
+    forgeModal: { type: '', id: null },
 };
 
 // ==================== QUOTES ====================
@@ -70,16 +74,19 @@ const saveData = () => {
     localStorage.setItem('chainbreaker_habits', JSON.stringify(APP_STATE.habits));
     localStorage.setItem('chainbreaker_logs', JSON.stringify(APP_STATE.dailyLogs));
     localStorage.setItem('chainbreaker_settings', JSON.stringify(APP_STATE.settings));
+    localStorage.setItem('chainbreaker_forge', JSON.stringify(APP_STATE.forgeData));
 };
 
 const loadData = () => {
     const habits = localStorage.getItem('chainbreaker_habits');
     const logs = localStorage.getItem('chainbreaker_logs');
     const settings = localStorage.getItem('chainbreaker_settings');
+    const forge = localStorage.getItem('chainbreaker_forge');
 
     if (habits) APP_STATE.habits = JSON.parse(habits);
     if (logs) APP_STATE.dailyLogs = JSON.parse(logs);
     if (settings) APP_STATE.settings = JSON.parse(settings);
+    if (forge) APP_STATE.forgeData = JSON.parse(forge);
 };
 
 // ==================== STREAK CALCULATION ====================
@@ -160,7 +167,14 @@ const switchPage = (pageName) => {
     if (pageName === 'home') renderHome();
     else if (pageName === 'calendar') renderCalendar();
     else if (pageName === 'analytics') renderAnalytics();
+    else if (pageName === 'forge') renderForge();
     else if (pageName === 'settings') renderSettings();
+
+    requestAnimationFrame(() => {
+        const container = document.querySelector('.pages-container');
+        if (container) container.scrollTop = 0;
+        window.scrollTo(0, 0);
+    });
 };
 
 // ==================== HOME PAGE ====================
@@ -171,6 +185,8 @@ const renderHome = () => {
     renderTodayMood();
     renderHabits();
     renderQuote();
+    renderForgeWidget();
+    renderXPBanner();
 };
 
 const renderTodayDate = () => {
@@ -442,6 +458,11 @@ const renderCalendar = () => {
             noteIndicator = '<div class="day-note-indicator">📝</div>';
         }
 
+        const hasForgeCheckIn = Object.values(APP_STATE.forgeData).some(p =>
+            (p.checkInDates || []).includes(dateStr)
+        );
+        const forgeIndicator = hasForgeCheckIn ? '<div class="day-forge-indicator">⚔️</div>' : '';
+
         html += `
             <div class="calendar-day ${moodClass} ${isToday ? 'today' : ''} ${isFuture ? 'future' : ''}"
                  style="${moodStyle}"
@@ -449,6 +470,7 @@ const renderCalendar = () => {
                 <span class="day-number">${day}</span>
                 ${indicator}
                 ${noteIndicator}
+                ${forgeIndicator}
             </div>
         `;
     }
@@ -535,6 +557,29 @@ const openDayModal = (dateStr) => {
                 </div>
             `;
         }).join('');
+    }
+
+    // Forge check-ins for this day
+    const forgeSections = CHALLENGES_DB.map(challenge => {
+        const p = APP_STATE.forgeData[challenge.id];
+        if (!p?.isActive) return null;
+        const done = (p.checkInDates || []).includes(dateStr);
+        return `
+            <div class="day-habit-item">
+                <span class="habit-icon">${challenge.emoji}</span>
+                <span class="habit-name" style="color:${challenge.color}">${challenge.title}</span>
+                <span style="font-size:1.1rem">${done ? '✅' : '○'}</span>
+            </div>
+        `;
+    }).filter(Boolean).join('');
+
+    if (forgeSections) {
+        habitsContainer.innerHTML += `
+            <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border-color)">
+                <div style="font-size:0.8rem;color:var(--text-muted);margin-bottom:8px;">⚔️ FORGE GÖREVLERİ</div>
+                ${forgeSections}
+            </div>
+        `;
     }
 
     // Note
@@ -628,6 +673,8 @@ const renderAnalytics = () => {
     renderHabitAnalytics();
     renderOverallStats();
     renderHeatmap();
+    renderForgeAnalytics();
+    renderCorrelation();
 };
 
 // Haftanın günlerine göre mood analizi
@@ -1070,3 +1117,431 @@ const initApp = () => {
 
 // Start app
 document.addEventListener('DOMContentLoaded', initApp);
+
+// ==================== FORGE / DİSİPLİN ====================
+
+const CHALLENGES_DB = [
+    {
+        id: 'skill', title: '90 Günlük Yetenek Ustalığı', duration: 90, emoji: '🧠',
+        description: 'Bir beceri seç ve 90 gün boyunca günde 1 saatini buna ayır. 90 gün sonra uzman olmayacaksın ama yetkin olacaksın. Çaba gösterdiğinde her şeyi öğrenebileceğinin kanıtı olacak.',
+        isStrict: false, color: '#6366f1',
+    },
+    {
+        id: 'journal', title: '365 Günlük Günlük Tutma', duration: 365, emoji: '📓',
+        description: 'Her gece 3 şey yaz: Günün bir başarısı, öğrenilen bir ders ve şükrettiğin bir şey. Sadece 5 dakika sürer. Yıl sonunda belgelenmiş 365 büyüme anın olacak.',
+        isStrict: false, color: '#f59e0b',
+    },
+    {
+        id: 'walking', title: 'Yürüyüş Meditasyonu', duration: 30, emoji: '🚶',
+        description: 'Her gün telefon, müzik veya podcast olmadan 30 dakika yürü. Sadece sen ve düşüncelerin. Zihinsel sağlığın için yapabileceğin en güçlü şeylerden biri.',
+        isStrict: false, color: '#22c55e',
+    },
+    {
+        id: 'nocomplaint', title: '21 Gün Şikayet Etmeme', duration: 21, emoji: '🤐',
+        description: 'Hiçbir şey hakkında şikayet etmeden 21 gün geçir. Kendini şikayet ederken yakalarsan, birinci günden yeniden başla. Bitirenler sorunlar yerine çözümler bulmaya başlar.',
+        isStrict: true, color: '#ef4444',
+    },
+    {
+        id: 'digital', title: 'Dijital Çevre Detoksu', duration: 30, emoji: '📵',
+        description: '30 gün boyunca çevrimiçi tükettiklerin konusunda bilinçli ol. Seni oyalayan şeyleri çıkar, yerine sana bir şeyler öğreten içerikler koy.',
+        isStrict: false, color: '#8b5cf6',
+    },
+    {
+        id: 'coldshower', title: 'Soğuk Duş Meydan Okuması', duration: 30, emoji: '🚿',
+        description: 'Her duşu en az iki dakikalık soğuk suyla bitir. İlk başta kötüdür ama sonrasında güne zinde başlarsın. Stresle daha iyi başa çıkarsın.',
+        isStrict: false, color: '#06b6d4',
+    },
+    {
+        id: 'dopamine', title: '30 Gün Dopamin Detoksu', duration: 30, emoji: '⚡',
+        description: 'Ucuz dopamin sağlayan her şeyi kes. Sosyal medya, Netflix, video oyunları veya abur cubur yok. Odak süren geri gelecek, zihnin uyanacak.',
+        isStrict: false, color: '#a855f7',
+    },
+    {
+        id: '75hard', title: '75 Hard', duration: 75, emoji: '💪',
+        description: 'Günde 2 antrenman (biri dışarıda), sıfır alkol/hile öğünü olan diyet, 4 litre su, 10 sayfa kitap. Birini kaçırırsan baştan başlarsın.',
+        isStrict: true, color: '#f97316',
+    },
+];
+
+const renderForge = () => {
+    const page = document.getElementById('forge-page');
+    const subTab = APP_STATE.forgeSubTab;
+    const forgeData = APP_STATE.forgeData;
+
+    const activeChallenges = CHALLENGES_DB.filter(c => forgeData[c.id]?.isActive);
+    const inactiveChallenges = CHALLENGES_DB.filter(c => !forgeData[c.id]?.isActive);
+
+    let html = `<div class="page-content">
+        <div class="forge-subtabs">
+            <button class="forge-subtab ${subTab === 'active' ? 'active' : ''}" onclick="setForgeSubTab('active')">
+                Aktif Görevler${activeChallenges.length > 0 ? ` (${activeChallenges.length})` : ''}
+            </button>
+            <button class="forge-subtab ${subTab === 'discover' ? 'active' : ''}" onclick="setForgeSubTab('discover')">
+                Keşfet
+            </button>
+        </div>`;
+
+    if (subTab === 'active') {
+        if (activeChallenges.length === 0) {
+            html += `<div class="forge-empty">
+                <span class="forge-empty-icon">🎯</span>
+                <h3>Henüz Aktif Görev Yok</h3>
+                <p>Kendini zorla, alışkanlık değil — karakter inşa et. İlk görevi seç.</p>
+                <button class="btn primary" onclick="setForgeSubTab('discover')">Görevleri Keşfet</button>
+            </div>`;
+        } else {
+            activeChallenges.forEach(challenge => {
+                const p = forgeData[challenge.id];
+                const percent = Math.min(100, Math.round((p.currentDay / challenge.duration) * 100));
+                const isExpanded = APP_STATE.forgeExpandedId === challenge.id;
+                const logs = p.logs || [];
+
+                html += `<div class="forge-card">
+                    ${p.isCompleted ? `
+                    <div class="forge-completed-overlay">
+                        <span style="font-size:2.5rem">🏆</span>
+                        <h3>Tebrikler!</h3>
+                        <p><strong>${challenge.title}</strong> görevini tamamladın. İradeni kanıtladın!</p>
+                        <button class="btn primary" style="margin-top:10px;width:100%" onclick="openForgeModal('reset','${challenge.id}')">🔄 Yeniden Başla</button>
+                        <button class="btn secondary" style="margin-top:8px;width:100%" onclick="abandonChallenge('${challenge.id}')">Listeden Kaldır</button>
+                    </div>` : ''}
+                    <div class="forge-card-inner">
+                        <div class="forge-card-top">
+                            <div class="forge-icon" style="background:${challenge.color}22;color:${challenge.color}">${challenge.emoji}</div>
+                            <div class="forge-title-block">
+                                <div class="forge-title">${challenge.title}</div>
+                                ${challenge.isStrict ? '<span class="forge-strict-badge">⚡ ZORLU MOD</span>' : ''}
+                            </div>
+                            <div class="forge-day-counter">
+                                <span class="forge-day-num" style="color:${challenge.color}">${p.currentDay}</span>
+                                <span class="forge-day-total">/ ${challenge.duration} gün</span>
+                            </div>
+                        </div>
+                        <div class="forge-progress-label">
+                            <span>İlerleme</span>
+                            <span style="color:${challenge.color};font-weight:600">${percent}%</span>
+                        </div>
+                        <div class="forge-progress-bg">
+                            <div class="forge-progress-fill" style="width:${percent}%;background:${challenge.color}"></div>
+                        </div>
+                        <div class="forge-actions">
+                            <button class="forge-checkin-btn" style="background:${challenge.color}" onclick="openForgeModal('checkin','${challenge.id}')">
+                                ✅ Günü Tamamla
+                            </button>
+                            <button class="forge-ghost-btn ${isExpanded ? 'expanded' : ''}" onclick="toggleForgeExpand('${challenge.id}')">📋</button>
+                            ${challenge.isStrict ? `<button class="forge-ghost-btn" onclick="openForgeModal('reset','${challenge.id}')" title="Kuralı bozdum">🔄</button>` : ''}
+                        </div>
+                    </div>
+                    ${isExpanded ? `
+                    <div class="forge-logs">
+                        <div class="forge-logs-header">
+                            <span>📅 Kayıtlar</span>
+                            <span class="forge-logs-count">${logs.length} gün</span>
+                        </div>
+                        ${logs.length === 0
+                            ? '<p class="forge-no-logs">Henüz kayıt yok. İlk günü tamamla!</p>'
+                            : `<div class="forge-logs-list">${logs.map(log => `
+                                <div class="forge-log-item">
+                                    <div class="forge-log-header">
+                                        <span class="forge-log-day" style="color:${challenge.color}">Gün ${log.day}</span>
+                                        <span class="forge-log-date">${new Intl.DateTimeFormat('tr-TR', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' }).format(new Date(log.date))}</span>
+                                    </div>
+                                    ${log.note ? `<p class="forge-log-note">"${log.note}"</p>` : ''}
+                                </div>`).join('')}
+                            </div>`}
+                        <button class="forge-abandon-btn" onclick="openForgeModal('abandon','${challenge.id}')">🗑️ Görevi Sil</button>
+                    </div>` : ''}
+                </div>`;
+            });
+        }
+    } else {
+        if (inactiveChallenges.length === 0) {
+            html += `<div class="forge-empty">
+                <span class="forge-empty-icon">🏆</span>
+                <h3>Tüm Görevler Aktif!</h3>
+                <p>Listede keşfedilecek yeni görev kalmadı. Aktif görevlerine odaklan.</p>
+            </div>`;
+        } else {
+            inactiveChallenges.forEach(challenge => {
+                html += `<div class="forge-discover-card">
+                    <div class="forge-discover-header">
+                        <div class="forge-icon" style="background:${challenge.color}22;color:${challenge.color}">${challenge.emoji}</div>
+                        <div>
+                            <div class="forge-title">${challenge.title}</div>
+                            <span class="forge-duration-badge">${challenge.duration} Günlük Süreç</span>
+                        </div>
+                    </div>
+                    <p class="forge-description">${challenge.description}</p>
+                    ${challenge.isStrict ? `
+                    <div class="forge-strict-notice">
+                        ⚡ <strong>Zorlu Mod:</strong> Bir kuralı bile bozarsan 1. Günden tekrar başlamak zorundasın.
+                    </div>` : ''}
+                    <button class="btn primary forge-start-btn" onclick="startChallenge('${challenge.id}')">▶ Bu Görevi Başlat</button>
+                </div>`;
+            });
+        }
+    }
+
+    html += '</div>';
+    page.innerHTML = html;
+};
+
+const setForgeSubTab = (tab) => {
+    APP_STATE.forgeSubTab = tab;
+    APP_STATE.forgeExpandedId = null;
+    renderForge();
+};
+
+const toggleForgeExpand = (id) => {
+    APP_STATE.forgeExpandedId = APP_STATE.forgeExpandedId === id ? null : id;
+    renderForge();
+};
+
+const startChallenge = (id) => {
+    APP_STATE.forgeData[id] = {
+        currentDay: 0, isActive: true, isCompleted: false,
+        logs: [], checkInDates: [], startedAt: new Date().toISOString(),
+    };
+    APP_STATE.forgeSubTab = 'active';
+    saveData();
+    renderForge();
+    showToast('Görev başlatıldı! 🚀', 'success');
+};
+
+const abandonChallenge = (id) => {
+    delete APP_STATE.forgeData[id];
+    saveData();
+    renderForge();
+    showToast('Görev silindi.', 'success');
+};
+
+const openForgeModal = (type, challengeId) => {
+    APP_STATE.forgeModal = { type, id: challengeId };
+
+    const title = document.getElementById('forge-modal-title');
+    const body = document.getElementById('forge-modal-body');
+    const footer = document.getElementById('forge-modal-footer');
+
+    if (type === 'checkin') {
+        title.textContent = '✅ Günü Tamamla';
+        body.innerHTML = `
+            <p style="color:var(--text-secondary);margin-bottom:12px">Bugün nasıldı? Gelecekteki sana not bırak. <span style="color:var(--text-muted)">(isteğe bağlı)</span></p>
+            <textarea id="forge-note-input" placeholder="Çok zorlandım ama bırakmadım…" style="width:100%;padding:12px;border:1px solid var(--border-color);border-radius:12px;background:var(--bg-input);color:var(--text-primary);font-family:inherit;font-size:0.95rem;resize:none;min-height:100px;outline:none"></textarea>`;
+        footer.innerHTML = `
+            <button class="btn secondary" onclick="closeForgeModal()">İptal</button>
+            <button class="btn primary" onclick="forgeCheckIn()">Kaydet</button>`;
+    } else if (type === 'reset') {
+        title.textContent = '🔄 Kuralı Bozdun Mu?';
+        body.innerHTML = `<p style="color:var(--text-secondary)">Tüm ilerleme ve notlar sıfırlanacak. Emin misin?</p>`;
+        footer.innerHTML = `
+            <button class="btn secondary" onclick="closeForgeModal()">İptal</button>
+            <button class="btn" style="background:var(--danger);color:white;flex:1" onclick="forgeReset()">Evet, Başa Dön</button>`;
+    } else if (type === 'abandon') {
+        title.textContent = '🗑️ Görevi Sil';
+        body.innerHTML = `<p style="color:var(--text-secondary)">Tüm kayıtlar kalıcı olarak silinecek. Emin misin?</p>`;
+        footer.innerHTML = `
+            <button class="btn secondary" onclick="closeForgeModal()">İptal</button>
+            <button class="btn" style="background:var(--danger);color:white;flex:1" onclick="confirmAbandonChallenge()">Evet, Sil</button>`;
+    }
+
+    document.getElementById('forge-modal').classList.add('active');
+};
+
+const closeForgeModal = () => {
+    document.getElementById('forge-modal').classList.remove('active');
+    APP_STATE.forgeModal = { type: '', id: null };
+};
+
+const forgeCheckIn = () => {
+    const { id } = APP_STATE.forgeModal;
+    if (!id) return;
+
+    const noteEl = document.getElementById('forge-note-input');
+    const note = noteEl ? noteEl.value.trim() : '';
+
+    const p = APP_STATE.forgeData[id];
+    if (!p || p.isCompleted) return;
+
+    const challenge = CHALLENGES_DB.find(c => c.id === id);
+    const nextDay = p.currentDay + 1;
+
+    const todayStr = getToday();
+    if (!p.checkInDates) p.checkInDates = [];
+    if (!p.checkInDates.includes(todayStr)) {
+        p.checkInDates.push(todayStr);
+    }
+
+    APP_STATE.forgeData[id] = {
+        ...p,
+        currentDay: nextDay,
+        isCompleted: nextDay >= challenge.duration,
+        logs: [{ day: nextDay, date: new Date().toISOString(), note }, ...(p.logs || [])],
+        checkInDates: p.checkInDates,
+    };
+
+    saveData();
+    closeForgeModal();
+    renderForge();
+    renderForgeWidget();
+    showToast(`Gün ${nextDay} tamamlandı! 🎯`, 'success');
+};
+
+const forgeReset = () => {
+    const { id } = APP_STATE.forgeModal;
+    if (!id) return;
+
+    APP_STATE.forgeData[id] = {
+        currentDay: 0, isActive: true, isCompleted: false,
+        logs: [], checkInDates: [], startedAt: new Date().toISOString(),
+    };
+
+    saveData();
+    closeForgeModal();
+    renderForge();
+    showToast('Görev sıfırlandı. Baştan başla! 💪', 'success');
+};
+
+const confirmAbandonChallenge = () => {
+    const { id } = APP_STATE.forgeModal;
+    closeForgeModal();
+    abandonChallenge(id);
+};
+
+// ==================== FORGE WIDGET (HOME) ====================
+const renderForgeWidget = () => {
+    const container = document.getElementById('forge-widget-container');
+    if (!container) return;
+
+    const activeForge = CHALLENGES_DB.filter(c => {
+        const p = APP_STATE.forgeData[c.id];
+        return p?.isActive && !p?.isCompleted;
+    });
+
+    if (activeForge.length === 0) {
+        container.innerHTML = '';
+        return;
+    }
+
+    const itemsHtml = activeForge.map(challenge => {
+        const p = APP_STATE.forgeData[challenge.id];
+        const percent = Math.min(100, Math.round((p.currentDay / challenge.duration) * 100));
+        return `
+            <div class="forge-widget-item" onclick="switchPage('forge')">
+                <span class="forge-widget-emoji">${challenge.emoji}</span>
+                <div class="forge-widget-info">
+                    <div class="forge-widget-title">${challenge.title}</div>
+                    <div class="forge-progress-bg" style="margin-top:4px">
+                        <div class="forge-progress-fill" style="width:${percent}%;background:${challenge.color}"></div>
+                    </div>
+                </div>
+                <div class="forge-widget-day" style="color:${challenge.color}">${p.currentDay}<span>/${challenge.duration}</span></div>
+                <button class="habit-check" onclick="event.stopPropagation(); quickForgeCheckIn('${challenge.id}')"></button>
+            </div>
+        `;
+    }).join('');
+
+    container.innerHTML = `
+        <section class="habits-card">
+            <div class="card-header">
+                <h3 class="card-title">⚔️ Aktif Görevler</h3>
+            </div>
+            <div class="habits-list">
+                ${itemsHtml}
+            </div>
+        </section>
+    `;
+};
+
+const quickForgeCheckIn = (id) => {
+    openForgeModal('checkin', id);
+};
+
+const renderXPBanner = () => {
+    // XP Faz 4
+};
+
+// ==================== FORGE ANALYTICS ====================
+const renderForgeAnalytics = () => {
+    const container = document.getElementById('forge-analytics');
+    if (!container) return;
+
+    const activeForge = CHALLENGES_DB.filter(c => APP_STATE.forgeData[c.id]?.isActive);
+
+    if (activeForge.length === 0) {
+        container.innerHTML = '<div class="no-habits" style="padding:20px">Aktif Forge görevi yok.</div>';
+        return;
+    }
+
+    container.innerHTML = activeForge.map(challenge => {
+        const p = APP_STATE.forgeData[challenge.id];
+        const percent = Math.min(100, Math.round((p.currentDay / challenge.duration) * 100));
+
+        let estimatedEnd = '—';
+        if (p.startedAt) {
+            const end = new Date(p.startedAt);
+            end.setDate(end.getDate() + challenge.duration);
+            estimatedEnd = end.toLocaleDateString('tr-TR');
+        }
+
+        return `
+            <div class="habit-stat">
+                <span class="habit-stat-icon">${challenge.emoji}</span>
+                <div class="habit-stat-info">
+                    <div class="habit-stat-name">${challenge.title}</div>
+                    <div style="font-size:0.75rem;color:var(--text-muted)">${p.currentDay}/${challenge.duration} gün · Tahmini bitiş: ${estimatedEnd}</div>
+                    <div class="habit-stat-bar">
+                        <div class="habit-stat-fill" style="width:${percent}%;background:${challenge.color}"></div>
+                    </div>
+                </div>
+                <span class="habit-stat-percent">${percent}%</span>
+            </div>
+        `;
+    }).join('');
+};
+
+// ==================== CORRELATION ====================
+const renderCorrelation = () => {
+    const container = document.getElementById('correlation-section');
+    if (!container) return;
+
+    const days = [];
+    for (let i = 0; i < 30; i++) {
+        const d = new Date();
+        d.setDate(d.getDate() - i);
+        const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        const log = APP_STATE.dailyLogs[dateStr];
+        if (!log || !log.mood) continue;
+
+        const habitCount = APP_STATE.habits.filter(h => log.habits?.[h.id]).length;
+        const habitPct = APP_STATE.habits.length > 0 ? Math.round((habitCount / APP_STATE.habits.length) * 100) : 0;
+        days.push({ dateStr, mood: log.mood, habitPct });
+    }
+
+    if (days.length < 7) {
+        container.innerHTML = '<div class="no-habits" style="padding:20px">📊 Yeterli veri yok — birkaç gün daha kayıt gir.</div>';
+        return;
+    }
+
+    const highHabitDays = days.filter(d => d.habitPct >= 70);
+    const avgMoodHighHabit = highHabitDays.length > 0
+        ? (highHabitDays.reduce((a, b) => a + b.mood, 0) / highHabitDays.length).toFixed(1)
+        : null;
+
+    const scatterHtml = days.map(d => {
+        const x = d.habitPct;
+        const y = ((5 - d.mood) / 4) * 100;
+        return `<div style="position:absolute;left:${x}%;top:${y}%;width:8px;height:8px;border-radius:50%;background:${MOOD_COLORS[d.mood]};transform:translate(-50%,-50%);opacity:0.8"></div>`;
+    }).join('');
+
+    const insightHtml = avgMoodHighHabit
+        ? `<p style="font-size:0.85rem;color:var(--text-secondary);margin-top:12px">Alışkanlıklarını %70+ tamamladığın günlerde ortalama ruh halin: <strong style="color:var(--text-primary)">${avgMoodHighHabit} ${MOOD_EMOJIS[Math.round(parseFloat(avgMoodHighHabit))]}</strong></p>`
+        : '';
+
+    container.innerHTML = `
+        <div style="position:relative;height:120px;background:var(--bg-input);border-radius:8px;margin:8px 0;overflow:hidden">
+            ${scatterHtml}
+        </div>
+        <div style="text-align:center;font-size:0.75rem;color:var(--text-muted)">0% ← Alışkanlık Oranı → 100%</div>
+        ${insightHtml}
+    `;
+};
