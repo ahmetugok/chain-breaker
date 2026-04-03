@@ -568,7 +568,8 @@ const openDayModal = (dateStr) => {
             <div class="day-habit-item">
                 <span class="habit-icon">${challenge.emoji}</span>
                 <span class="habit-name" style="color:${challenge.color}">${challenge.title}</span>
-                <span style="font-size:1.1rem">${done ? '✅' : '○'}</span>
+                <button class="day-habit-toggle ${done ? 'checked' : ''}"
+                        onclick="toggleDayForge('${challenge.id}', '${dateStr}')"></button>
             </div>
         `;
     }).filter(Boolean).join('');
@@ -645,6 +646,34 @@ const toggleDayHabit = (habitId) => {
     }
 };
 
+const toggleDayForge = (challengeId, dateStr) => {
+    const p = APP_STATE.forgeData[challengeId];
+    if (!p) return;
+
+    if (!p.checkInDates) p.checkInDates = [];
+
+    const idx = p.checkInDates.indexOf(dateStr);
+    if (idx >= 0) {
+        p.checkInDates.splice(idx, 1);
+    } else {
+        p.checkInDates.push(dateStr);
+    }
+
+    const challenge = CHALLENGES_DB.find(c => c.id === challengeId);
+    const newDay = p.checkInDates.length;
+
+    APP_STATE.forgeData[challengeId] = {
+        ...p,
+        currentDay: newDay,
+        isCompleted: newDay >= challenge.duration,
+        checkInDates: p.checkInDates,
+    };
+
+    saveData();
+    openDayModal(dateStr);
+    renderCalendar();
+};
+
 const saveDayNote = () => {
     if (!APP_STATE.selectedDate) return;
 
@@ -656,7 +685,6 @@ const saveDayNote = () => {
     APP_STATE.dailyLogs[APP_STATE.selectedDate].note = note;
 
     saveData();
-    renderNotes();
     closeDayModal();
     showToast('Kaydedildi', 'success');
 };

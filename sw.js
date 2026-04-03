@@ -1,5 +1,5 @@
 // Service Worker for Chain Breaker PWA
-const CACHE_NAME = 'chain-breaker-v6';
+const CACHE_NAME = 'chain-breaker-v7';
 
 const STATIC_ASSETS = [
     './',
